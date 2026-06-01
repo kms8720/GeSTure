@@ -78,6 +78,40 @@ This repository currently covers the vision/skeleton side of the mock-up:
 
 ## Chronological Notes
 
+## 2026-06-02 Seoul - MacBook full jamo reference capture
+
+### What changed
+
+- Added a nearest-reference recognizer that loads `data/reference_samples.jsonl`.
+- Updated `acc-gesture run` to use captured references when the file exists, with placeholder fallback if it is missing or invalid.
+- Updated the canonical jamo class list to the 31 target labels:
+  `ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅅ ㅇ ㅈ ㅊ ㅋ ㅌ ㅍ ㅎ ㅏ ㅑ ㅓ ㅕ ㅗ ㅛ ㅜ ㅠ ㅡ ㅣ ㅐ ㅒ ㅔ ㅖ ㅚ ㅟ ㅢ`.
+- Captured 20 samples for each of the 31 labels on the MacBook camera 0.
+
+### Data captured
+
+- File: `data/reference_samples.jsonl`
+- Total samples: 620
+- Labels: 31
+- Samples per label: 20
+- Camera: 0
+
+### Notes
+
+- An earlier `giyeok` ASCII-label capture was moved to local backup `data/reference_samples_giyeok_backup_20260602.jsonl` and should not be used.
+- The committed reference file uses actual jamo labels, starting from `ㄱ`.
+- MediaPipe reported `ㅕ` samples as `Right` while most other labels were `Left`; keep an eye on this during accuracy review.
+
+### Next concrete task
+
+Run live recognition against the captured reference set:
+
+```sh
+.venv/bin/acc-gesture run --camera 0 --interval 1.0 --references data/reference_samples.jsonl --output data/session.jsonl
+```
+
+Then add repeated-frame smoothing and confidence thresholds based on the observed predictions.
+
 ## 2026-06-01 Seoul - desktop labeled reference capture command
 
 ### What changed

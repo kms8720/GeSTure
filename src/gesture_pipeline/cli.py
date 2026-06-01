@@ -12,7 +12,7 @@ from gesture_pipeline.diagnostics import (
 )
 from gesture_pipeline.pipeline import GesturePipeline
 from gesture_pipeline.preview import preview_skeleton
-from gesture_pipeline.recognizer import PlaceholderRecognizer
+from gesture_pipeline.recognizer import PlaceholderRecognizer, ReferenceRecognizer
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -51,6 +51,8 @@ def add_run_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--interval", type=float, default=1.0, help="Seconds between captures.")
     parser.add_argument("--output", type=Path, default=Path("data/session.jsonl"))
     parser.add_argument("--no-preview", action="store_true", help="Disable camera preview window.")
+    parser.add_argument("--references", type=Path, default=Path("data/reference_samples.jsonl"))
+    parser.add_argument("--neighbors", type=int, default=3, help="Reference samples to average per label.")
 
 
 def main() -> None:
@@ -83,8 +85,22 @@ def main() -> None:
         output_path=args.output,
         show_preview=not args.no_preview,
     )
-    pipeline = GesturePipeline(config=config, recognizer=PlaceholderRecognizer())
+    recognizer = build_recognizer(args.references, args.neighbors)
+    pipeline = GesturePipeline(config=config, recognizer=recognizer)
     pipeline.run()
+
+
+def build_recognizer(reference_path: Path, neighbors: int):
+    if not reference_path.exists():
+        print(f"reference file not found: {reference_path}; using placeholder recognizer")
+        return PlaceholderRecognizer()
+    try:
+        recognizer = ReferenceRecognizer.from_jsonl(reference_path, neighbors=neighbors)
+    except ValueError as exc:
+        print(f"reference recognizer unavailable: {exc}; using placeholder recognizer")
+        return PlaceholderRecognizer()
+    print(f"loaded {len(recognizer.samples)} reference samples from {reference_path}")
+    return recognizer
 
 
 if __name__ == "__main__":

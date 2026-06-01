@@ -9,7 +9,7 @@ The first goal is to sample the robot hand with a camera every second, extract s
 1. Capture a camera frame every 1 second.
 2. Extract 21 hand landmarks using MediaPipe.
 3. Normalize landmarks around the wrist and palm scale.
-4. Classify the pose with a placeholder recognizer.
+4. Classify the pose with captured reference skeleton samples when available.
 5. Store timestamped jamo candidates as JSONL.
 
 ## Run
@@ -23,7 +23,7 @@ pip install -e .
 acc-gesture check --camera 0 --save-frame data/check_frame.jpg
 acc-gesture check --scan-cameras --max-camera-index 3
 acc-gesture preview --camera 0
-acc-gesture capture --label giyeok --camera 0 --samples 20 --output data/reference_samples.jsonl
+acc-gesture capture --label ㄱ --camera 0 --samples 20 --output data/reference_samples.jsonl
 acc-gesture run --camera 0 --interval 1.0 --output data/session.jsonl
 ```
 
@@ -33,11 +33,13 @@ Press `q` in the camera preview window to stop.
 
 Use `acc-gesture preview --camera 0` on a camera-equipped laptop to visually inspect whether the hand skeleton points and lines are tracking correctly.
 
-Use `acc-gesture capture --label giyeok --camera 0 --samples 20` to save labeled skeleton references for the first recognizer rules/model.
+Use `acc-gesture capture --label ㄱ --camera 0 --samples 20` to save labeled skeleton references. The current reference set covers `ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅅ ㅇ ㅈ ㅊ ㅋ ㅌ ㅍ ㅎ ㅏ ㅑ ㅓ ㅕ ㅗ ㅛ ㅜ ㅠ ㅡ ㅣ ㅐ ㅒ ㅔ ㅖ ㅚ ㅟ ㅢ`.
+
+When `data/reference_samples.jsonl` exists, `acc-gesture run` uses a nearest-reference recognizer. If the file is missing, it falls back to the placeholder recognizer.
 
 ## Next Implementation Steps
 
-1. Replace the placeholder recognizer with real jamo rules or a trained model.
+1. Review recognition accuracy with the captured reference set.
 2. Add per-letter confidence thresholds and repeated-frame smoothing.
 3. Add jamo composition into syllables and words.
 4. Connect recognized text to LLM interpretation.
