@@ -78,6 +78,13 @@ This repository currently covers the vision/skeleton side of the mock-up:
 
 ## Chronological Notes
 
+## 2026-06-02 Seoul - fingerspelling source citation
+
+### What changed
+
+- Added the Korean consonant/vowel fingerspelling source link to `README.md`.
+- Source: <https://blog.naver.com/minacyworld/222236459553>
+
 ## 2026-06-02 Seoul - live jamo recognition overlay
 
 ### What changed

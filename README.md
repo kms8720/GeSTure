@@ -40,6 +40,10 @@ When `data/reference_samples.jsonl` exists, `acc-gesture run` uses a nearest-ref
 
 Use `acc-gesture recognize --camera 0 --references data/reference_samples.jsonl` to check jamo recognition live. The camera window shows labels such as `ㄱ-giyeok` in the upper-left corner. Press space in the window to stop.
 
+## Korean Fingerspelling Reference
+
+The Korean consonant/vowel fingerspelling poses used for the current jamo reference set are based on this Naver Blog reference page: <https://blog.naver.com/minacyworld/222236459553>.
+
 ## Next Implementation Steps
 
 1. Review recognition accuracy with the captured reference set.
