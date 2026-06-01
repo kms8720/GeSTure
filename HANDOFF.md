@@ -1,5 +1,82 @@
 # HANDOFF
 
+## Project Overview - Read This First
+
+### Goal
+
+ACC GeSTure mock-up algorithm for the exhibition project. A robot hand will be filmed by a camera about once per second. The software should extract skeletal hand landmarks, recognize Korean fingerspelling jamo from the pose, store the recognized consonants/vowels/words, and later pass accumulated text to an LLM/display pipeline for exhibition output.
+
+### Current Scope
+
+This repository currently covers the vision/skeleton side of the mock-up:
+
+1. Open a camera.
+2. Sample frames or stream frames.
+3. Extract 21 hand landmarks with MediaPipe Hands.
+4. Normalize the skeleton so camera placement matters less.
+5. Save timestamped placeholder jamo predictions to JSONL.
+6. Show live skeleton overlays for human verification.
+
+### Environment Decision
+
+- Use Python 3.10, 3.11, or 3.12.
+- `mediapipe==0.10.14` is pinned because it exposes the legacy `mp.solutions.hands` API used by the current extractor.
+- Python 3.13 and newer MediaPipe wheels may lack `mp.solutions`; avoid them for now unless the extractor is migrated to MediaPipe Tasks.
+
+### Implemented
+
+- Python package scaffold and CLI entrypoint: `acc-gesture`.
+- `acc-gesture check --no-camera` for environment verification.
+- `acc-gesture check --scan-cameras --max-camera-index 3` for camera index discovery.
+- `acc-gesture check --camera 0 --duration 3 --preview --save-frame ...` for streamed camera/skeleton verification.
+- `acc-gesture preview --camera 0` for live skeleton overlay viewing.
+- `acc-gesture run --camera 0 --interval 1.0 --output data/session.jsonl` for 1-second sampling and JSONL storage.
+- MediaPipe hand landmark extraction through `MediaPipeHandExtractor`.
+- Skeleton normalization around wrist, scale, and palm rotation.
+- Placeholder recognizer that still needs real jamo logic.
+- JSONL session storage.
+- Handoff workflow between Windows desktop and MacBook.
+
+### Verified
+
+- Windows desktop:
+  - Python 3.11.9 environment works.
+  - `mediapipe==0.10.14` exposes `mp.solutions`.
+  - Compile and no-camera diagnostics pass.
+  - No usable camera is attached to this desktop.
+- MacBook:
+  - Python 3.10.5 environment works.
+  - Camera index 0 opens.
+  - Streamed camera preview works.
+  - Skeleton detection succeeded with `Left, landmarks=21`.
+
+### Not Implemented Yet
+
+- Real Korean jamo recognition rules/model.
+- Jamo confidence thresholds and repeated-frame smoothing.
+- Composition from jamo candidates into syllables/words.
+- Dataset capture workflow for labeling robot-hand poses.
+- Arduino/Bluetooth/controller signal handling for the robot hand.
+- LLM sentence generation from stored words/jamo.
+- Exhibition display output for text/images/animation.
+- Autonomous robot-hand motion and return-to-neutral behavior.
+
+### Next Recommended Work
+
+1. On the MacBook, run `acc-gesture preview --camera 0` and visually confirm that the skeleton lines are stable for the robot hand, not only a human hand.
+2. Capture reference frames for the first small jamo set, for example `giyeok`, `nieun`, `digeut`, `a`, and `eo`.
+3. Implement the first recognizer pass as simple landmark-angle/distance rules before training a model.
+4. Add smoothing so one unstable frame does not immediately become a letter.
+5. Update this file before switching machines, then commit and push.
+
+### Coordination Rules
+
+- Before starting on any machine: `git pull --rebase origin main`.
+- After changing code: run the relevant check command, update this file, commit, and push.
+- Keep hardware-specific observations here, especially camera index, Python version, and whether skeleton detection worked.
+
+## Chronological Notes
+
 ## 2026-06-01 Seoul - MacBook camera 0 stream verification
 
 ### What was tested
@@ -131,7 +208,7 @@ python3 -m venv .venv
 - Pydantic: `2.13.4`
 - OS: macOS / Darwin
 
-### Current blocker
+### Current blocker - resolved by later notes
 
 The code in `src/gesture_pipeline/skeleton.py` uses the legacy MediaPipe API:
 
@@ -145,7 +222,7 @@ However, the MediaPipe wheels available for Python 3.13 expose `Image`, `ImageFo
 AttributeError: module 'mediapipe' has no attribute 'solutions'
 ```
 
-Downgrading to `mediapipe==0.10.30` on Python 3.13 did not restore `mp.solutions`.
+Downgrading to `mediapipe==0.10.30` on Python 3.13 did not restore `mp.solutions`. Later work resolved the project path by using Python 3.10-3.12 and pinning `mediapipe==0.10.14`.
 
 ### Suggested next steps
 
