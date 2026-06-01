@@ -1,5 +1,46 @@
 # HANDOFF
 
+## 2026-06-01 Seoul - MacBook camera 0 stream verification
+
+### What was tested
+
+- Recreated `.venv` with Python 3.10.5 after pulling the latest `origin/main`.
+- Installed the project with `mediapipe==0.10.14`.
+- Added a 3-second stream mode to `acc-gesture check` so the user can see live video while multiple frames are sampled.
+- Verified camera index 0 as the working camera path for this MacBook.
+
+### Commands run
+
+```sh
+rm -rf .venv
+/Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10 -m venv .venv
+.venv/bin/pip install -e .
+.venv/bin/acc-gesture check --no-camera
+.venv/bin/acc-gesture check --scan-cameras --max-camera-index 3
+.venv/bin/acc-gesture check --camera 0 --duration 3 --preview --save-frame data/check_frame_camera0_stream.jpg
+```
+
+### Result
+
+- `check --no-camera` passed on Python 3.10.5.
+- `mediapipe 0.10.14` restored the legacy `mp.solutions` API path.
+- Camera index 0 opens and captures real video frames.
+- The 3-second stream check displayed live preview and sampled 43 frames.
+- Hand skeleton detection succeeded on camera index 0:
+  - `hand_skeleton: Left, landmarks=21`
+  - saved `data/check_frame_camera0_stream.jpg`
+
+### Notes
+
+- Use camera index 0 as the default path for this MacBook.
+- Prefer the new stream check over a single-frame check during manual testing:
+
+```sh
+.venv/bin/acc-gesture check --camera 0 --duration 3 --preview --save-frame data/check_frame_camera0_stream.jpg
+```
+
+- Ask the user to hold an open palm steady in the center of the frame before running the command.
+
 ## 2026-06-01 Seoul - desktop follow-up after macOS Python 3.13 blocker
 
 ### What changed

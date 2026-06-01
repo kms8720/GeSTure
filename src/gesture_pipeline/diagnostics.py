@@ -3,10 +3,12 @@ from importlib import import_module
 from pathlib import Path
 import platform
 import sys
+import time
 
 import cv2
 
 from gesture_pipeline.camera import CAMERA_BACKENDS
+from gesture_pipeline.overlay import draw_hand_overlay
 from gesture_pipeline.skeleton import MediaPipeHandExtractor, SkeletonNormalizer
 
 
@@ -48,7 +50,12 @@ def check_imports() -> list[CheckItem]:
     return items
 
 
-def check_camera(camera_index: int, save_frame: Path | None = None) -> list[CheckItem]:
+def check_camera(
+    camera_index: int,
+    save_frame: Path | None = None,
+    duration_sec: float = 0.0,
+    show_preview: bool = False,
+) -> list[CheckItem]:
     items: list[CheckItem] = []
     cap = None
     backend_name = ""
@@ -64,6 +71,9 @@ def check_camera(camera_index: int, save_frame: Path | None = None) -> list[Chec
 
     if cap is None:
         return [CheckItem("camera", False, f"could not open index {camera_index}; tried {', '.join(tried)}")]
+
+    if duration_sec > 0 or show_preview:
+        return _check_camera_stream(cap, camera_index, backend_name, save_frame, duration_sec, show_preview)
 
     try:
         ok, frame = cap.read()
@@ -93,6 +103,78 @@ def check_camera(camera_index: int, save_frame: Path | None = None) -> list[Chec
 
     if raw_hand is None:
         items.append(CheckItem("hand_skeleton", False, "no hand detected in the sampled frame"))
+        return items
+
+    normalized = SkeletonNormalizer().normalize(raw_hand)
+    items.append(
+        CheckItem(
+            "hand_skeleton",
+            True,
+            f"{normalized.handedness}, landmarks={normalized.points.shape[0]}",
+        )
+    )
+    return items
+
+
+def _check_camera_stream(
+    cap: cv2.VideoCapture,
+    camera_index: int,
+    backend_name: str,
+    save_frame: Path | None,
+    duration_sec: float,
+    show_preview: bool,
+) -> list[CheckItem]:
+    items: list[CheckItem] = []
+    extractor = None
+    frame = None
+    save_candidate = None
+    raw_hand = None
+    frames_checked = 0
+    duration = duration_sec if duration_sec > 0 else 3.0
+    deadline = time.monotonic() + duration
+
+    try:
+        extractor = MediaPipeHandExtractor(max_hands=1)
+        while time.monotonic() < deadline:
+            ok, current_frame = cap.read()
+            if not ok or current_frame is None:
+                continue
+
+            frame = current_frame
+            frames_checked += 1
+            current_hand = extractor.extract(current_frame)
+            if current_hand is not None:
+                raw_hand = current_hand
+                save_candidate = current_frame.copy()
+
+            if show_preview:
+                cv2.imshow("ACC GeSTure check preview", draw_hand_overlay(current_frame, current_hand))
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    break
+    except Exception as exc:
+        items.append(CheckItem("hand_skeleton", False, f"{type(exc).__name__}: {exc}"))
+        return items
+    finally:
+        if extractor is not None:
+            extractor.close()
+        cap.release()
+        if show_preview:
+            cv2.destroyWindow("ACC GeSTure check preview")
+
+    if frame is None:
+        return [CheckItem("camera", False, f"opened index {camera_index}, but frame read failed")]
+
+    height, width = frame.shape[:2]
+    items.append(CheckItem("camera", True, f"index {camera_index}, backend {backend_name}, frame {width}x{height}"))
+    items.append(CheckItem("frames_checked", frames_checked > 0, str(frames_checked)))
+
+    if save_frame is not None:
+        save_frame.parent.mkdir(parents=True, exist_ok=True)
+        saved = cv2.imwrite(str(save_frame), save_candidate if save_candidate is not None else frame)
+        items.append(CheckItem("save_frame", saved, str(save_frame)))
+
+    if raw_hand is None:
+        items.append(CheckItem("hand_skeleton", False, f"no hand detected in {duration:g}s"))
         return items
 
     normalized = SkeletonNormalizer().normalize(raw_hand)

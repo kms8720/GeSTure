@@ -27,6 +27,8 @@ def build_parser() -> argparse.ArgumentParser:
     check_parser.add_argument("--scan-cameras", action="store_true", help="Scan camera indices before checking one camera.")
     check_parser.add_argument("--max-camera-index", type=int, default=3, help="Highest camera index to scan.")
     check_parser.add_argument("--save-frame", type=Path, default=None, help="Optional path to save one camera frame.")
+    check_parser.add_argument("--duration", type=float, default=0.0, help="Seconds to sample camera frames.")
+    check_parser.add_argument("--preview", action="store_true", help="Show a live skeleton preview while checking.")
 
     preview_parser = subparsers.add_parser("preview", help="Show a live camera window with skeleton lines.")
     preview_parser.add_argument("--camera", type=int, default=0, help="Camera index.")
@@ -49,7 +51,7 @@ def main() -> None:
         if not args.no_camera:
             if args.scan_cameras:
                 items.extend(scan_cameras(args.max_camera_index))
-            items.extend(check_camera(args.camera, args.save_frame))
+            items.extend(check_camera(args.camera, args.save_frame, args.duration, args.preview))
         ok = print_check_report(items)
         raise SystemExit(0 if ok else 1)
     if args.command == "preview":
