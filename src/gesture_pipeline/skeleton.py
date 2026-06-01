@@ -12,6 +12,12 @@ class MediaPipeHandExtractor:
         min_detection_confidence: float = 0.5,
         min_tracking_confidence: float = 0.5,
     ) -> None:
+        if not hasattr(mp, "solutions"):
+            raise RuntimeError(
+                "MediaPipe legacy Hands API is unavailable. "
+                "Use Python 3.10-3.12 with a compatible mediapipe wheel, "
+                "or migrate this extractor to mediapipe.tasks."
+            )
         self._hands = mp.solutions.hands.Hands(
             static_image_mode=False,
             max_num_hands=max_hands,

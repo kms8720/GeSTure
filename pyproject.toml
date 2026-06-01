@@ -2,10 +2,10 @@
 name = "acc-gesture"
 version = "0.1.0"
 description = "Skeletal hand-sign recognition pipeline for the ACC GeSTure mock-up."
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 dependencies = [
     "opencv-python>=4.9.0",
-    "mediapipe>=0.10.14",
+    "mediapipe==0.10.14",
     "numpy>=1.26.0",
     "pydantic>=2.7.0",
 ]

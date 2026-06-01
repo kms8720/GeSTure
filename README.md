@@ -14,6 +14,8 @@ The first goal is to sample the robot hand with a camera every second, extract s
 
 ## Run
 
+Use Python 3.10, 3.11, or 3.12 with `mediapipe==0.10.14`. Newer MediaPipe wheels may not expose the legacy `mp.solutions.hands` API used by this mock-up pipeline.
+
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1

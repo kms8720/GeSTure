@@ -1,5 +1,46 @@
 # HANDOFF
 
+## 2026-06-01 Seoul - desktop follow-up after macOS Python 3.13 blocker
+
+### What changed
+
+- Set the supported Python range in `pyproject.toml` to `>=3.10,<3.13`.
+- Pinned `mediapipe==0.10.14`, because `mediapipe 0.10.35` also lacks `mp.solutions` in this environment.
+- Updated `acc-gesture check` so unsupported Python versions fail with a direct message.
+- Updated MediaPipe import diagnostics to detect when `mp.solutions` is missing.
+- Added a clearer runtime error in `MediaPipeHandExtractor` for missing legacy MediaPipe Hands API.
+- Updated `README.md` to tell macOS/desktop users to use Python 3.10, 3.11, or 3.12.
+
+### Why
+
+The macOS check showed Python 3.13 installs a MediaPipe wheel where `mediapipe.solutions` is unavailable. A follow-up on Windows showed `mediapipe 0.10.35` also lacks `mp.solutions`, while `mediapipe 0.10.14` restores it. For the mock-up stage, staying on the legacy Hands API is the fastest path.
+
+### Commands run on Windows desktop
+
+```powershell
+.\.venv\Scripts\python.exe -m compileall src
+.\.venv\Scripts\acc-gesture.exe check --no-camera
+.\.venv\Scripts\acc-gesture.exe check --scan-cameras --max-camera-index 1 --camera 0
+```
+
+### Result
+
+- Compile check passed.
+- Environment check passed on Python 3.11.9 after downgrading to `mediapipe 0.10.14`.
+- Camera scan on this Windows desktop reported camera indices 0 and 1 unavailable, so camera/skeleton capture should be re-tested on the MacBook or camera-equipped laptop.
+
+### Next concrete task
+
+On the MacBook, recreate the virtualenv with Python 3.11 or 3.12 so the new dependency pin installs `mediapipe 0.10.14`, then re-run:
+
+```sh
+python3.11 -m venv .venv
+.venv/bin/pip install -e .
+.venv/bin/acc-gesture check --no-camera
+.venv/bin/acc-gesture check --scan-cameras --max-camera-index 3
+.venv/bin/acc-gesture check --camera 0 --save-frame data/check_frame.jpg
+```
+
 ## 2026-06-01 Seoul - local verification on this desktop
 
 ### Context

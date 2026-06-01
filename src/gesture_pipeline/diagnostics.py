@@ -19,8 +19,11 @@ class CheckItem:
 
 def check_python() -> CheckItem:
     version = ".".join(str(part) for part in sys.version_info[:3])
-    ok = sys.version_info >= (3, 10)
-    return CheckItem("python", ok, f"{version} on {platform.system()}")
+    ok = (3, 10) <= sys.version_info[:2] < (3, 13)
+    detail = f"{version} on {platform.system()}"
+    if not ok:
+        detail += "; use Python 3.10, 3.11, or 3.12 for MediaPipe legacy Hands support"
+    return CheckItem("python", ok, detail)
 
 
 def check_imports() -> list[CheckItem]:
@@ -30,7 +33,16 @@ def check_imports() -> list[CheckItem]:
         try:
             module = import_module(module_name)
             version = getattr(module, "__version__", "installed")
-            items.append(CheckItem(module_name, True, str(version)))
+            if module_name == "mediapipe" and not hasattr(module, "solutions"):
+                items.append(
+                    CheckItem(
+                        module_name,
+                        False,
+                        f"{version}; missing mp.solutions, use Python 3.10-3.12 or migrate to MediaPipe Tasks",
+                    )
+                )
+            else:
+                items.append(CheckItem(module_name, True, str(version)))
         except Exception as exc:
             items.append(CheckItem(module_name, False, f"{type(exc).__name__}: {exc}"))
     return items
@@ -69,11 +81,15 @@ def check_camera(camera_index: int, save_frame: Path | None = None) -> list[Chec
         saved = cv2.imwrite(str(save_frame), frame)
         items.append(CheckItem("save_frame", saved, str(save_frame)))
 
-    extractor = MediaPipeHandExtractor(max_hands=1)
     try:
+        extractor = MediaPipeHandExtractor(max_hands=1)
         raw_hand = extractor.extract(frame)
+    except Exception as exc:
+        items.append(CheckItem("hand_skeleton", False, f"{type(exc).__name__}: {exc}"))
+        return items
     finally:
-        extractor.close()
+        if "extractor" in locals():
+            extractor.close()
 
     if raw_hand is None:
         items.append(CheckItem("hand_skeleton", False, "no hand detected in the sampled frame"))
