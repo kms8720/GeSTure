@@ -42,6 +42,47 @@ JAMO_CLASSES = [
     "ㅢ",
 ]
 
+JAMO_ROMANIZATION = {
+    "ㄱ": "giyeok",
+    "ㄴ": "nieun",
+    "ㄷ": "digeut",
+    "ㄹ": "rieul",
+    "ㅁ": "mieum",
+    "ㅂ": "bieup",
+    "ㅅ": "siot",
+    "ㅇ": "ieung",
+    "ㅈ": "jieut",
+    "ㅊ": "chieut",
+    "ㅋ": "kieuk",
+    "ㅌ": "tieut",
+    "ㅍ": "pieup",
+    "ㅎ": "hieut",
+    "ㅏ": "a",
+    "ㅑ": "ya",
+    "ㅓ": "eo",
+    "ㅕ": "yeo",
+    "ㅗ": "o",
+    "ㅛ": "yo",
+    "ㅜ": "u",
+    "ㅠ": "yu",
+    "ㅡ": "eu",
+    "ㅣ": "i",
+    "ㅐ": "ae",
+    "ㅒ": "yae",
+    "ㅔ": "e",
+    "ㅖ": "ye",
+    "ㅚ": "oe",
+    "ㅟ": "wi",
+    "ㅢ": "ui",
+}
+
+
+def format_jamo_label(label: str) -> str:
+    romanized = JAMO_ROMANIZATION.get(label)
+    if romanized is None:
+        return label
+    return f"{label}-{romanized}"
+
 
 class JamoRecognizer(ABC):
     @abstractmethod

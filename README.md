@@ -24,6 +24,7 @@ acc-gesture check --camera 0 --save-frame data/check_frame.jpg
 acc-gesture check --scan-cameras --max-camera-index 3
 acc-gesture preview --camera 0
 acc-gesture capture --label ㄱ --camera 0 --samples 20 --output data/reference_samples.jsonl
+acc-gesture recognize --camera 0 --references data/reference_samples.jsonl
 acc-gesture run --camera 0 --interval 1.0 --output data/session.jsonl
 ```
 
@@ -36,6 +37,8 @@ Use `acc-gesture preview --camera 0` on a camera-equipped laptop to visually ins
 Use `acc-gesture capture --label ㄱ --camera 0 --samples 20` to save labeled skeleton references. The current reference set covers `ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅅ ㅇ ㅈ ㅊ ㅋ ㅌ ㅍ ㅎ ㅏ ㅑ ㅓ ㅕ ㅗ ㅛ ㅜ ㅠ ㅡ ㅣ ㅐ ㅒ ㅔ ㅖ ㅚ ㅟ ㅢ`.
 
 When `data/reference_samples.jsonl` exists, `acc-gesture run` uses a nearest-reference recognizer. If the file is missing, it falls back to the placeholder recognizer.
+
+Use `acc-gesture recognize --camera 0 --references data/reference_samples.jsonl` to check jamo recognition live. The camera window shows labels such as `ㄱ-giyeok` in the upper-left corner. Press space in the window to stop.
 
 ## Next Implementation Steps
 

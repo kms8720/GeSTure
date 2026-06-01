@@ -10,6 +10,7 @@ from gesture_pipeline.diagnostics import (
     print_check_report,
     scan_cameras,
 )
+from gesture_pipeline.live_recognition import recognize_live
 from gesture_pipeline.pipeline import GesturePipeline
 from gesture_pipeline.preview import preview_skeleton
 from gesture_pipeline.recognizer import PlaceholderRecognizer, ReferenceRecognizer
@@ -33,6 +34,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     preview_parser = subparsers.add_parser("preview", help="Show a live camera window with skeleton lines.")
     preview_parser.add_argument("--camera", type=int, default=0, help="Camera index.")
+
+    recognize_parser = subparsers.add_parser("recognize", help="Show live recognition labels on the camera feed.")
+    recognize_parser.add_argument("--camera", type=int, default=0, help="Camera index.")
+    recognize_parser.add_argument("--references", type=Path, default=Path("data/reference_samples.jsonl"))
+    recognize_parser.add_argument("--neighbors", type=int, default=3, help="Reference samples to average per label.")
+    recognize_parser.add_argument("--duration", type=float, default=0.0, help="Seconds to run; 0 means until space.")
 
     capture_parser = subparsers.add_parser("capture", help="Capture labeled skeleton samples for recognizer work.")
     capture_parser.add_argument("--label", required=True, help="Reference label, such as giyeok, nieun, a, or eo.")
@@ -67,6 +74,10 @@ def main() -> None:
         raise SystemExit(0 if ok else 1)
     if args.command == "preview":
         preview_skeleton(args.camera)
+        return
+    if args.command == "recognize":
+        recognizer = build_recognizer(args.references, args.neighbors)
+        recognize_live(args.camera, recognizer, args.duration)
         return
     if args.command == "capture":
         capture_reference_samples(

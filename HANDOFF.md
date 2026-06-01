@@ -78,6 +78,26 @@ This repository currently covers the vision/skeleton side of the mock-up:
 
 ## Chronological Notes
 
+## 2026-06-02 Seoul - live jamo recognition overlay
+
+### What changed
+
+- Added `acc-gesture recognize` for live recognition verification.
+- The camera window continuously captures frames and displays the predicted jamo in the upper-left corner.
+- Labels are shown with Korean plus romanization, such as `ㄱ-giyeok`, to avoid ambiguity if Korean rendering is fragile.
+- The live recognition window runs until the user presses space.
+
+### Command
+
+```sh
+.venv/bin/acc-gesture recognize --camera 0 --references data/reference_samples.jsonl
+```
+
+### Verified
+
+- `recognize --help` works.
+- The command loaded 620 reference samples and opened camera index 0.
+
 ## 2026-06-02 Seoul - MacBook full jamo reference capture
 
 ### What changed
