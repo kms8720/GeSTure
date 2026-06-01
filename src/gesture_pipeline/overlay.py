@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
 from gesture_pipeline.types import HandLandmarks
 from gesture_pipeline.recognizer import format_jamo_label
@@ -28,6 +29,15 @@ HAND_CONNECTIONS = (
     (17, 18),
     (18, 19),
     (19, 20),
+)
+
+FONT_CANDIDATES = (
+    "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+    "/System/Library/Fonts/Supplemental/AppleGothic.ttf",
+    "/Library/Fonts/AppleGothic.ttf",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+    "C:/Windows/Fonts/malgun.ttf",
 )
 
 
@@ -95,26 +105,36 @@ def _draw_text_panel(
     color: tuple[int, int, int],
 ) -> None:
     x, y = origin
-    line_height = 34
-    max_width = 0
+    font = _load_text_font(28)
+    line_height = 38
+    padding_x = 12
+    padding_y = 10
+    max_width = 1
     for line in lines:
-        (width, _), _ = cv2.getTextSize(line, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
-        max_width = max(max_width, width)
+        bbox = font.getbbox(line)
+        max_width = max(max_width, bbox[2] - bbox[0])
 
-    panel_top = max(0, y - 28)
-    panel_bottom = y + line_height * len(lines)
+    panel_left = max(0, x - padding_x)
+    panel_top = max(0, y - 30)
+    panel_right = x + max_width + padding_x
+    panel_bottom = y + line_height * len(lines) - 2 + padding_y
     overlay = image.copy()
-    cv2.rectangle(overlay, (x - 10, panel_top), (x + max_width + 12, panel_bottom), (0, 0, 0), -1)
+    cv2.rectangle(overlay, (panel_left, panel_top), (panel_right, panel_bottom), (0, 0, 0), -1)
     cv2.addWeighted(overlay, 0.55, image, 0.45, 0, image)
 
+    rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    pil_image = Image.fromarray(rgb)
+    draw = ImageDraw.Draw(pil_image)
+    fill = (color[2], color[1], color[0])
     for index, line in enumerate(lines):
-        cv2.putText(
-            image,
-            line,
-            (x, y + line_height * index),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
-            color,
-            2,
-            cv2.LINE_AA,
-        )
+        draw.text((x, y - 26 + line_height * index), line, font=font, fill=fill)
+    image[:, :] = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_RGB2BGR)
+
+
+def _load_text_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    for path in FONT_CANDIDATES:
+        try:
+            return ImageFont.truetype(path, size=size)
+        except OSError:
+            continue
+    return ImageFont.load_default()

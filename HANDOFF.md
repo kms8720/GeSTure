@@ -78,6 +78,15 @@ This repository currently covers the vision/skeleton side of the mock-up:
 
 ## Chronological Notes
 
+## 2026-06-02 Seoul - Korean overlay text rendering
+
+### What changed
+
+- Replaced OpenCV text drawing for prediction labels with Pillow-based text rendering.
+- Added `Pillow` as a direct dependency.
+- Verified `ㄱ-giyeok`, `ㅋ-kieuk`, and `ㅗ-o` render correctly in `data/korean_overlay_test.jpg`.
+- On this MacBook, the overlay uses `/System/Library/Fonts/AppleSDGothicNeo.ttc`.
+
 ## 2026-06-02 Seoul - fingerspelling source citation
 
 ### What changed
