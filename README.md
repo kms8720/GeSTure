@@ -23,6 +23,7 @@ pip install -e .
 acc-gesture check --camera 0 --save-frame data/check_frame.jpg
 acc-gesture check --scan-cameras --max-camera-index 3
 acc-gesture preview --camera 0
+acc-gesture capture --label giyeok --camera 0 --samples 20 --output data/reference_samples.jsonl
 acc-gesture run --camera 0 --interval 1.0 --output data/session.jsonl
 ```
 
@@ -31,6 +32,8 @@ Press `q` in the camera preview window to stop.
 `acc-gesture check --no-camera` only checks the Python environment and installed packages.
 
 Use `acc-gesture preview --camera 0` on a camera-equipped laptop to visually inspect whether the hand skeleton points and lines are tracking correctly.
+
+Use `acc-gesture capture --label giyeok --camera 0 --samples 20` to save labeled skeleton references for the first recognizer rules/model.
 
 ## Next Implementation Steps
 

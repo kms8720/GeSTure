@@ -30,6 +30,7 @@ This repository currently covers the vision/skeleton side of the mock-up:
 - `acc-gesture check --scan-cameras --max-camera-index 3` for camera index discovery.
 - `acc-gesture check --camera 0 --duration 3 --preview --save-frame ...` for streamed camera/skeleton verification.
 - `acc-gesture preview --camera 0` for live skeleton overlay viewing.
+- `acc-gesture capture --label giyeok --camera 0 --samples 20` for labeled reference skeleton capture.
 - `acc-gesture run --camera 0 --interval 1.0 --output data/session.jsonl` for 1-second sampling and JSONL storage.
 - MediaPipe hand landmark extraction through `MediaPipeHandExtractor`.
 - Skeleton normalization around wrist, scale, and palm rotation.
@@ -55,7 +56,7 @@ This repository currently covers the vision/skeleton side of the mock-up:
 - Real Korean jamo recognition rules/model.
 - Jamo confidence thresholds and repeated-frame smoothing.
 - Composition from jamo candidates into syllables/words.
-- Dataset capture workflow for labeling robot-hand poses.
+- Batch capture planning for the full jamo set and repeat sessions.
 - Arduino/Bluetooth/controller signal handling for the robot hand.
 - LLM sentence generation from stored words/jamo.
 - Exhibition display output for text/images/animation.
@@ -64,8 +65,8 @@ This repository currently covers the vision/skeleton side of the mock-up:
 ### Next Recommended Work
 
 1. On the MacBook, run `acc-gesture preview --camera 0` and visually confirm that the skeleton lines are stable for the robot hand, not only a human hand.
-2. Capture reference frames for the first small jamo set, for example `giyeok`, `nieun`, `digeut`, `a`, and `eo`.
-3. Implement the first recognizer pass as simple landmark-angle/distance rules before training a model.
+2. On the MacBook, capture reference frames for the first small jamo set, for example `giyeok`, `nieun`, `digeut`, `a`, and `eo`.
+3. Implement the first recognizer pass using the saved reference skeletons before training a model.
 4. Add smoothing so one unstable frame does not immediately become a letter.
 5. Update this file before switching machines, then commit and push.
 
@@ -76,6 +77,32 @@ This repository currently covers the vision/skeleton side of the mock-up:
 - Keep hardware-specific observations here, especially camera index, Python version, and whether skeleton detection worked.
 
 ## Chronological Notes
+
+## 2026-06-01 Seoul - desktop labeled reference capture command
+
+### What changed
+
+- Added `acc-gesture capture` to save labeled hand skeleton samples as JSONL.
+- Each saved sample contains timestamp, label, handedness, raw MediaPipe points, normalized points, and flattened feature vector.
+- Replaced the corrupted Korean jamo class list in `recognizer.py` with stable ASCII labels such as `giyeok`, `nieun`, `a`, and `eo`.
+
+### Why
+
+The next recognizer step needs reference skeletons from the actual robot hand/camera setup. The Windows desktop has no camera, so this command is intended to run on the MacBook where camera index 0 has already been verified.
+
+### Commands to run on the MacBook
+
+```sh
+.venv/bin/acc-gesture capture --label giyeok --camera 0 --samples 20 --output data/reference_samples.jsonl
+.venv/bin/acc-gesture capture --label nieun --camera 0 --samples 20 --output data/reference_samples.jsonl
+.venv/bin/acc-gesture capture --label digeut --camera 0 --samples 20 --output data/reference_samples.jsonl
+.venv/bin/acc-gesture capture --label a --camera 0 --samples 20 --output data/reference_samples.jsonl
+.venv/bin/acc-gesture capture --label eo --camera 0 --samples 20 --output data/reference_samples.jsonl
+```
+
+### Next concrete task
+
+After at least a few labels have reference samples, add a nearest-reference or landmark-rule recognizer to replace `PlaceholderRecognizer`.
 
 ## 2026-06-01 Seoul - MacBook camera 0 stream verification
 

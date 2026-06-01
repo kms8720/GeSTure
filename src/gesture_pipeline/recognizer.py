@@ -6,9 +6,30 @@ from gesture_pipeline.types import JamoPrediction, NormalizedHand
 
 
 JAMO_CLASSES = [
-    "ㄱ", "ㄴ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅅ", "ㅇ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ",
-    "ㅏ", "ㅑ", "ㅓ", "ㅕ", "ㅗ", "ㅛ", "ㅜ", "ㅠ", "ㅡ", "ㅣ",
-    "ㅐ", "ㅒ", "ㅔ", "ㅖ", "ㅘ", "ㅝ", "ㅢ",
+    "giyeok",
+    "nieun",
+    "digeut",
+    "rieul",
+    "mieum",
+    "bieup",
+    "siot",
+    "ieung",
+    "jieut",
+    "chieut",
+    "kieuk",
+    "tieut",
+    "pieup",
+    "hieut",
+    "a",
+    "ya",
+    "eo",
+    "yeo",
+    "o",
+    "yo",
+    "u",
+    "yu",
+    "eu",
+    "i",
 ]
 
 
@@ -25,7 +46,7 @@ class PlaceholderRecognizer(JamoRecognizer):
         feature = hand.flat()
         score = float(np.clip(np.linalg.norm(feature) / 20.0, 0.05, 0.95))
         return JamoPrediction(
-            label="?",
+            label="unknown",
             confidence=score,
-            candidates=[("?", score)],
+            candidates=[("unknown", score)],
         )

@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 
 from gesture_pipeline.config import PipelineConfig
+from gesture_pipeline.dataset_capture import capture_reference_samples
 from gesture_pipeline.diagnostics import (
     check_camera,
     check_imports,
@@ -33,6 +34,14 @@ def build_parser() -> argparse.ArgumentParser:
     preview_parser = subparsers.add_parser("preview", help="Show a live camera window with skeleton lines.")
     preview_parser.add_argument("--camera", type=int, default=0, help="Camera index.")
 
+    capture_parser = subparsers.add_parser("capture", help="Capture labeled skeleton samples for recognizer work.")
+    capture_parser.add_argument("--label", required=True, help="Reference label, such as giyeok, nieun, a, or eo.")
+    capture_parser.add_argument("--camera", type=int, default=0, help="Camera index.")
+    capture_parser.add_argument("--samples", type=int, default=20, help="Number of detected-hand samples to save.")
+    capture_parser.add_argument("--interval", type=float, default=0.25, help="Seconds between saved samples.")
+    capture_parser.add_argument("--output", type=Path, default=Path("data/reference_samples.jsonl"))
+    capture_parser.add_argument("--no-preview", action="store_true", help="Disable live skeleton preview.")
+
     add_run_arguments(parser)
     return parser
 
@@ -56,6 +65,16 @@ def main() -> None:
         raise SystemExit(0 if ok else 1)
     if args.command == "preview":
         preview_skeleton(args.camera)
+        return
+    if args.command == "capture":
+        capture_reference_samples(
+            label=args.label,
+            camera_index=args.camera,
+            output_path=args.output,
+            samples=args.samples,
+            interval_sec=args.interval,
+            show_preview=not args.no_preview,
+        )
         return
 
     config = PipelineConfig(
