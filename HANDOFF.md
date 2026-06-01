@@ -41,6 +41,22 @@ python3.11 -m venv .venv
 .venv/bin/acc-gesture check --camera 0 --save-frame data/check_frame.jpg
 ```
 
+## 2026-06-01 Seoul - desktop skeleton preview command
+
+### What changed
+
+- Added `acc-gesture preview --camera 0` for a live OpenCV window with hand skeleton points and lines.
+- Added shared overlay drawing in `src/gesture_pipeline/overlay.py`.
+- Updated the normal `acc-gesture run` preview so sampled frames also show the detected skeleton overlay.
+
+### Commands to run on the MacBook
+
+```sh
+.venv/bin/acc-gesture preview --camera 0
+```
+
+Press `q` in the preview window to stop. The expected display is the camera feed with green hand lines, blue/orange landmark dots, and a `hand: Left` or `hand: Right` label. If no hand is found, the window shows `no hand detected`.
+
 ## 2026-06-01 Seoul - local verification on this desktop
 
 ### Context

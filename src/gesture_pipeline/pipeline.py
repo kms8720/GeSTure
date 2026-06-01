@@ -2,10 +2,11 @@ import cv2
 
 from gesture_pipeline.camera import CameraSampler
 from gesture_pipeline.config import PipelineConfig
+from gesture_pipeline.overlay import draw_hand_overlay
 from gesture_pipeline.recognizer import JamoRecognizer
 from gesture_pipeline.session_store import JsonlSessionStore
 from gesture_pipeline.skeleton import MediaPipeHandExtractor, SkeletonNormalizer
-from gesture_pipeline.types import CaptureResult
+from gesture_pipeline.types import CaptureResult, HandLandmarks
 
 
 class GesturePipeline:
@@ -24,12 +25,12 @@ class GesturePipeline:
     def run(self) -> None:
         try:
             for frame in self.sampler.frames():
-                result = self._process_frame(frame)
+                result, raw_hand = self._process_frame(frame)
                 self.store.append(result)
                 self._print_result(result)
 
                 if self.config.show_preview:
-                    cv2.imshow("ACC GeSTure camera", frame.image_bgr)
+                    cv2.imshow("ACC GeSTure camera", draw_hand_overlay(frame.image_bgr, raw_hand))
                     if cv2.waitKey(1) & 0xFF == ord("q"):
                         break
         finally:
@@ -37,24 +38,26 @@ class GesturePipeline:
             if self.config.show_preview:
                 cv2.destroyAllWindows()
 
-    def _process_frame(self, frame) -> CaptureResult:
+    def _process_frame(self, frame) -> tuple[CaptureResult, HandLandmarks | None]:
         raw_hand = self.extractor.extract(frame.image_bgr)
         if raw_hand is None:
-            return CaptureResult(
+            result = CaptureResult(
                 timestamp=frame.timestamp,
                 prediction=None,
                 handedness="Unknown",
                 detected=False,
             )
+            return result, None
 
         normalized = self.normalizer.normalize(raw_hand)
         prediction = self.recognizer.predict(normalized)
-        return CaptureResult(
+        result = CaptureResult(
             timestamp=frame.timestamp,
             prediction=prediction,
             handedness=normalized.handedness,
             detected=True,
         )
+        return result, raw_hand
 
     @staticmethod
     def _print_result(result: CaptureResult) -> None:

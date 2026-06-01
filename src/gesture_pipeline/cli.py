@@ -10,6 +10,7 @@ from gesture_pipeline.diagnostics import (
     scan_cameras,
 )
 from gesture_pipeline.pipeline import GesturePipeline
+from gesture_pipeline.preview import preview_skeleton
 from gesture_pipeline.recognizer import PlaceholderRecognizer
 
 
@@ -26,6 +27,9 @@ def build_parser() -> argparse.ArgumentParser:
     check_parser.add_argument("--scan-cameras", action="store_true", help="Scan camera indices before checking one camera.")
     check_parser.add_argument("--max-camera-index", type=int, default=3, help="Highest camera index to scan.")
     check_parser.add_argument("--save-frame", type=Path, default=None, help="Optional path to save one camera frame.")
+
+    preview_parser = subparsers.add_parser("preview", help="Show a live camera window with skeleton lines.")
+    preview_parser.add_argument("--camera", type=int, default=0, help="Camera index.")
 
     add_run_arguments(parser)
     return parser
@@ -48,6 +52,9 @@ def main() -> None:
             items.extend(check_camera(args.camera, args.save_frame))
         ok = print_check_report(items)
         raise SystemExit(0 if ok else 1)
+    if args.command == "preview":
+        preview_skeleton(args.camera)
+        return
 
     config = PipelineConfig(
         camera_index=args.camera,
