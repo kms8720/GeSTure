@@ -78,6 +78,30 @@ This repository currently covers the vision/skeleton side of the mock-up:
 
 ## Chronological Notes
 
+## 2026-06-02 Seoul - live Hangul compose mode
+
+### What changed
+
+- Added `acc-gesture compose` to manually build Hangul text from live jamo predictions.
+- Added a simple Hangul composer for syllables such as `ㄱㅏ -> 가`, `ㄱㅏㅇ -> 강`, and `ㅎㅏㄴㄱㅡㄹ -> 한글`.
+- The compose overlay shows current prediction, raw jamo buffer, and composed Hangul text.
+- Controls:
+  - Enter: append the current predicted jamo.
+  - Backspace: delete the last appended jamo.
+  - Space: stop the window.
+
+### Command
+
+```sh
+.venv/bin/acc-gesture compose --camera 0 --references data/reference_samples.jsonl
+```
+
+### Verified
+
+- Compile check passed.
+- Unit-style compose checks passed for `가`, `강`, `한글`, and `의`.
+- A 2-second camera smoke test loaded 620 reference samples and opened camera index 0.
+
 ## 2026-06-02 Seoul - Korean overlay text rendering
 
 ### What changed

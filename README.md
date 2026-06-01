@@ -25,6 +25,7 @@ acc-gesture check --scan-cameras --max-camera-index 3
 acc-gesture preview --camera 0
 acc-gesture capture --label ㄱ --camera 0 --samples 20 --output data/reference_samples.jsonl
 acc-gesture recognize --camera 0 --references data/reference_samples.jsonl
+acc-gesture compose --camera 0 --references data/reference_samples.jsonl
 acc-gesture run --camera 0 --interval 1.0 --output data/session.jsonl
 ```
 
@@ -40,6 +41,8 @@ When `data/reference_samples.jsonl` exists, `acc-gesture run` uses a nearest-ref
 
 Use `acc-gesture recognize --camera 0 --references data/reference_samples.jsonl` to check jamo recognition live. The camera window shows labels such as `ㄱ-giyeok` in the upper-left corner. Press space in the window to stop. Korean overlay text is rendered with Pillow and a Korean-capable system font, such as Apple SD Gothic Neo on macOS.
 
+Use `acc-gesture compose --camera 0 --references data/reference_samples.jsonl` to build Hangul text manually from live jamo predictions. Press Enter to append the current predicted jamo, Backspace to delete the last jamo, and Space to stop. The overlay shows both raw jamo and composed Hangul text, such as `ㄱㅏㅇ` -> `강`.
+
 ## Korean Fingerspelling Reference
 
 The Korean consonant/vowel fingerspelling poses used for the current jamo reference set are based on this Naver Blog reference page: <https://blog.naver.com/minacyworld/222236459553>.
@@ -48,6 +51,6 @@ The Korean consonant/vowel fingerspelling poses used for the current jamo refere
 
 1. Review recognition accuracy with the captured reference set.
 2. Add per-letter confidence thresholds and repeated-frame smoothing.
-3. Add jamo composition into syllables and words.
+3. Save composed text sessions to JSONL.
 4. Connect recognized text to LLM interpretation.
 5. Render generated text/image states for exhibition display.

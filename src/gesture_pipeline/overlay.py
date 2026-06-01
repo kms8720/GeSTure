@@ -98,6 +98,31 @@ def draw_prediction_overlay(image_bgr: np.ndarray, prediction: JamoPrediction | 
     return image
 
 
+def draw_compose_overlay(
+    image_bgr: np.ndarray,
+    prediction: JamoPrediction | None,
+    raw_jamo: str,
+    composed_text: str,
+) -> np.ndarray:
+    image = image_bgr.copy()
+    if prediction is None:
+        label = "no hand detected"
+        confidence = "-"
+    else:
+        label = format_jamo_label(prediction.label)
+        confidence = f"{prediction.confidence:.2f}"
+
+    lines = [
+        f"current: {label}",
+        f"confidence: {confidence}",
+        f"jamo: {raw_jamo or '-'}",
+        f"text: {composed_text or '-'}",
+        "Enter: add  Backspace: delete  Space: stop",
+    ]
+    _draw_text_panel(image, lines, (20, 36), color=(0, 255, 180))
+    return image
+
+
 def _draw_text_panel(
     image: np.ndarray,
     lines: list[str],

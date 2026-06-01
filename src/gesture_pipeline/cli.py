@@ -10,6 +10,7 @@ from gesture_pipeline.diagnostics import (
     print_check_report,
     scan_cameras,
 )
+from gesture_pipeline.live_compose import compose_live
 from gesture_pipeline.live_recognition import recognize_live
 from gesture_pipeline.pipeline import GesturePipeline
 from gesture_pipeline.preview import preview_skeleton
@@ -40,6 +41,12 @@ def build_parser() -> argparse.ArgumentParser:
     recognize_parser.add_argument("--references", type=Path, default=Path("data/reference_samples.jsonl"))
     recognize_parser.add_argument("--neighbors", type=int, default=3, help="Reference samples to average per label.")
     recognize_parser.add_argument("--duration", type=float, default=0.0, help="Seconds to run; 0 means until space.")
+
+    compose_parser = subparsers.add_parser("compose", help="Build Hangul text from live jamo predictions.")
+    compose_parser.add_argument("--camera", type=int, default=0, help="Camera index.")
+    compose_parser.add_argument("--references", type=Path, default=Path("data/reference_samples.jsonl"))
+    compose_parser.add_argument("--neighbors", type=int, default=3, help="Reference samples to average per label.")
+    compose_parser.add_argument("--duration", type=float, default=0.0, help="Seconds to run; 0 means until space.")
 
     capture_parser = subparsers.add_parser("capture", help="Capture labeled skeleton samples for recognizer work.")
     capture_parser.add_argument("--label", required=True, help="Reference label, such as giyeok, nieun, a, or eo.")
@@ -78,6 +85,10 @@ def main() -> None:
     if args.command == "recognize":
         recognizer = build_recognizer(args.references, args.neighbors)
         recognize_live(args.camera, recognizer, args.duration)
+        return
+    if args.command == "compose":
+        recognizer = build_recognizer(args.references, args.neighbors)
+        compose_live(args.camera, recognizer, args.duration)
         return
     if args.command == "capture":
         capture_reference_samples(
