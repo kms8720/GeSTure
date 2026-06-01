@@ -1,0 +1,17 @@
+[project]
+name = "acc-gesture"
+version = "0.1.0"
+description = "Skeletal hand-sign recognition pipeline for the ACC GeSTure mock-up."
+requires-python = ">=3.10"
+dependencies = [
+    "opencv-python>=4.9.0",
+    "mediapipe>=0.10.14",
+    "numpy>=1.26.0",
+    "pydantic>=2.7.0",
+]
+
+[project.scripts]
+acc-gesture = "gesture_pipeline.cli:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
