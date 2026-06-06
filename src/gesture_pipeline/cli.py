@@ -47,6 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
     compose_parser.add_argument("--references", type=Path, default=Path("data/reference_samples.jsonl"))
     compose_parser.add_argument("--neighbors", type=int, default=3, help="Reference samples to average per label.")
     compose_parser.add_argument("--duration", type=float, default=0.0, help="Seconds to run; 0 means until space.")
+    compose_parser.add_argument("--output", type=Path, default=Path("data/compose_session.jsonl"))
 
     capture_parser = subparsers.add_parser("capture", help="Capture labeled skeleton samples for recognizer work.")
     capture_parser.add_argument("--label", required=True, help="Reference label, such as giyeok, nieun, a, or eo.")
@@ -88,7 +89,7 @@ def main() -> None:
         return
     if args.command == "compose":
         recognizer = build_recognizer(args.references, args.neighbors)
-        compose_live(args.camera, recognizer, args.duration)
+        compose_live(args.camera, recognizer, args.duration, args.output)
         return
     if args.command == "capture":
         capture_reference_samples(

@@ -78,6 +78,36 @@ This repository currently covers the vision/skeleton side of the mock-up:
 
 ## Chronological Notes
 
+## 2026-06-06 Seoul - compose session JSONL logging
+
+### What changed
+
+- Pulled `origin/main`; local branch was already up to date.
+- Added `--output` to `acc-gesture compose`.
+- Compose mode now writes JSONL events containing:
+  - timestamp,
+  - action (`append`, `backspace`, or `stop`),
+  - raw jamo buffer,
+  - composed Hangul text,
+  - current prediction payload when available.
+
+### Command
+
+```sh
+.venv/bin/acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl
+```
+
+### Verified
+
+- Compile check passed.
+- Compose event store unit-style check wrote `ㄱㅏ -> 가` correctly.
+- `acc-gesture compose --help` shows the new `--output` option.
+- A 2-second camera smoke test loaded 620 reference samples, opened camera index 0, and wrote a `stop` event to `data/compose_session_smoke.jsonl`.
+
+### Next concrete task
+
+Add a clean "submit/finalize" action for completed composed text so it can be handed to the later LLM/display pipeline without scraping the raw event log.
+
 ## 2026-06-02 Seoul - live Hangul compose mode
 
 ### What changed
