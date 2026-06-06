@@ -78,6 +78,53 @@ This repository currently covers the vision/skeleton side of the mock-up:
 
 ## Chronological Notes
 
+## 2026-06-06 Seoul - local LLM finalize for compose
+
+### What changed
+
+- Added an Ollama-based local word correction client using only Python standard library HTTP calls.
+- Added compose CLI options:
+  - `--llm-model`, default `qwen3:14b`
+  - `--ollama-url`, default `http://localhost:11434`
+  - `--no-llm`
+- Added Tab finalize behavior in `acc-gesture compose`.
+- `finalize` events now write an `llm` payload with:
+  - `corrected_text`
+  - `candidates`
+  - `note`
+  - `model`
+  - `status`: `ok`, `unavailable`, or `error`
+- If Ollama is unavailable or returns invalid JSON, the original composed text is saved as the corrected text and compose keeps running.
+
+### Hardware and model direction
+
+- Runtime: Ollama.
+- Exhibition model target: `qwen3:14b`.
+- Development/fallback model on 16GB MacBook: `qwen2.5:7b-instruct`.
+- Recommended exhibition hardware: Mac mini M4 Pro with at least 48GB unified memory; 64GB preferred.
+
+### Command
+
+```sh
+ollama pull qwen3:14b
+ollama serve
+.venv/bin/acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl --llm-model qwen3:14b
+```
+
+### Verified
+
+- Compile check passed.
+- `acc-gesture compose --help` shows the new LLM options.
+- Ollama client parses valid JSON into `status=ok`.
+- Invalid LLM JSON falls back with `status=error`.
+- Unavailable Ollama falls back to original composed text.
+- `finalize` JSONL events include the expected `llm` payload.
+- A 2-second camera smoke test loaded 620 reference samples, opened camera index 0, and wrote a `stop` event.
+
+### Next concrete task
+
+Install Ollama/model on the target exhibition machine and manually verify Tab finalize with a real model response, then design the display/export flow for finalized corrected text.
+
 ## 2026-06-06 Seoul - compose session JSONL logging
 
 ### What changed

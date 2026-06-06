@@ -25,7 +25,7 @@ acc-gesture check --scan-cameras --max-camera-index 3
 acc-gesture preview --camera 0
 acc-gesture capture --label ㄱ --camera 0 --samples 20 --output data/reference_samples.jsonl
 acc-gesture recognize --camera 0 --references data/reference_samples.jsonl
-acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl
+acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl --llm-model qwen3:14b
 acc-gesture run --camera 0 --interval 1.0 --output data/session.jsonl
 ```
 
@@ -41,7 +41,16 @@ When `data/reference_samples.jsonl` exists, `acc-gesture run` uses a nearest-ref
 
 Use `acc-gesture recognize --camera 0 --references data/reference_samples.jsonl` to check jamo recognition live. The camera window shows labels such as `ㄱ-giyeok` in the upper-left corner. Press space in the window to stop. Korean overlay text is rendered with Pillow and a Korean-capable system font, such as Apple SD Gothic Neo on macOS.
 
-Use `acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl` to build Hangul text manually from live jamo predictions. Press Enter to append the current predicted jamo, Backspace to delete the last jamo, and Space to stop. The overlay shows both raw jamo and composed Hangul text, such as `ㄱㅏㅇ` -> `강`. Compose events are saved as JSONL with the action, raw jamo buffer, composed text, and current prediction.
+Use `acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl --llm-model qwen3:14b` to build Hangul text manually from live jamo predictions. Press Enter to append the current predicted jamo, Backspace to delete the last jamo, Tab to finalize and run local LLM word correction, and Space to stop. The overlay shows both raw jamo and composed Hangul text, such as `ㄱㅏㅇ` -> `강`. Compose events are saved as JSONL with the action, raw jamo buffer, composed text, current prediction, and LLM correction payload when finalized.
+
+For local LLM correction, install and run Ollama:
+
+```sh
+ollama pull qwen3:14b
+ollama serve
+```
+
+If Ollama is unavailable or returns invalid JSON, compose mode keeps running and saves the original composed text as the corrected text. Use `--no-llm` to disable LLM correction during testing. For the long-running exhibition machine, a Mac mini M4 Pro with at least 48GB unified memory is recommended; 64GB is preferred. The current MacBook M1 Pro 16GB is suitable for development and can use a smaller fallback model such as `qwen2.5:7b-instruct`.
 
 ## Korean Fingerspelling Reference
 
@@ -51,6 +60,6 @@ The Korean consonant/vowel fingerspelling poses used for the current jamo refere
 
 1. Review recognition accuracy with the captured reference set.
 2. Add per-letter confidence thresholds and repeated-frame smoothing.
-3. Add a clean export/submit step for completed composed text.
-4. Connect recognized text to LLM interpretation.
+3. Review finalized LLM correction logs from `data/compose_session.jsonl`.
+4. Add display/export handling for finalized corrected text.
 5. Render generated text/image states for exhibition display.

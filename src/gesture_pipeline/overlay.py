@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+from gesture_pipeline.llm import WordCorrectionResult
 from gesture_pipeline.types import HandLandmarks
 from gesture_pipeline.recognizer import format_jamo_label
 from gesture_pipeline.types import JamoPrediction
@@ -103,6 +104,7 @@ def draw_compose_overlay(
     prediction: JamoPrediction | None,
     raw_jamo: str,
     composed_text: str,
+    correction: WordCorrectionResult | None = None,
 ) -> np.ndarray:
     image = image_bgr.copy()
     if prediction is None:
@@ -117,8 +119,15 @@ def draw_compose_overlay(
         f"confidence: {confidence}",
         f"jamo: {raw_jamo or '-'}",
         f"text: {composed_text or '-'}",
-        "Enter: add  Backspace: delete  Space: stop",
     ]
+    if correction is not None:
+        lines.extend(
+            [
+                f"final: {correction.corrected_text or '-'}",
+                f"llm: {correction.status} ({correction.model})",
+            ]
+        )
+    lines.append("Enter: add  Backspace: delete  Tab: finalize  Space: stop")
     _draw_text_panel(image, lines, (20, 36), color=(0, 255, 180))
     return image
 

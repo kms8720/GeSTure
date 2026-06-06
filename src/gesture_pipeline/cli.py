@@ -12,6 +12,7 @@ from gesture_pipeline.diagnostics import (
 )
 from gesture_pipeline.live_compose import compose_live
 from gesture_pipeline.live_recognition import recognize_live
+from gesture_pipeline.llm import DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_URL, DisabledWordCorrector, OllamaWordCorrector
 from gesture_pipeline.pipeline import GesturePipeline
 from gesture_pipeline.preview import preview_skeleton
 from gesture_pipeline.recognizer import PlaceholderRecognizer, ReferenceRecognizer
@@ -48,6 +49,9 @@ def build_parser() -> argparse.ArgumentParser:
     compose_parser.add_argument("--neighbors", type=int, default=3, help="Reference samples to average per label.")
     compose_parser.add_argument("--duration", type=float, default=0.0, help="Seconds to run; 0 means until space.")
     compose_parser.add_argument("--output", type=Path, default=Path("data/compose_session.jsonl"))
+    compose_parser.add_argument("--llm-model", default=DEFAULT_OLLAMA_MODEL, help="Ollama model for Tab finalize.")
+    compose_parser.add_argument("--ollama-url", default=DEFAULT_OLLAMA_URL, help="Ollama base URL.")
+    compose_parser.add_argument("--no-llm", action="store_true", help="Disable LLM correction on Tab finalize.")
 
     capture_parser = subparsers.add_parser("capture", help="Capture labeled skeleton samples for recognizer work.")
     capture_parser.add_argument("--label", required=True, help="Reference label, such as giyeok, nieun, a, or eo.")
@@ -89,7 +93,12 @@ def main() -> None:
         return
     if args.command == "compose":
         recognizer = build_recognizer(args.references, args.neighbors)
-        compose_live(args.camera, recognizer, args.duration, args.output)
+        corrector = (
+            DisabledWordCorrector()
+            if args.no_llm
+            else OllamaWordCorrector(base_url=args.ollama_url, model=args.llm_model)
+        )
+        compose_live(args.camera, recognizer, args.duration, args.output, corrector)
         return
     if args.command == "capture":
         capture_reference_samples(

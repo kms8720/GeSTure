@@ -1,0 +1,138 @@
+from dataclasses import asdict, dataclass
+import json
+from typing import Any
+from urllib import error, request
+
+
+DEFAULT_OLLAMA_URL = "http://localhost:11434"
+DEFAULT_OLLAMA_MODEL = "qwen3:14b"
+
+
+@dataclass(frozen=True)
+class WordCorrectionResult:
+    corrected_text: str
+    candidates: list[str]
+    note: str
+    model: str
+    status: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+class OllamaWordCorrector:
+    def __init__(self, base_url: str = DEFAULT_OLLAMA_URL, model: str = DEFAULT_OLLAMA_MODEL) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.model = model
+
+    def correct(self, raw_jamo: str, composed_text: str) -> WordCorrectionResult:
+        prompt = _build_word_correction_prompt(raw_jamo, composed_text)
+        payload = {
+            "model": self.model,
+            "stream": False,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You correct Korean words from noisy fingerspelling recognition. "
+                        "Return only valid JSON. Do not write explanations outside JSON."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+        }
+
+        try:
+            response = self._post_json("/api/chat", payload)
+        except (OSError, error.URLError) as exc:
+            return _fallback_result(composed_text, self.model, "unavailable", f"Ollama unavailable: {exc}")
+        except Exception as exc:
+            return _fallback_result(composed_text, self.model, "error", f"Ollama request failed: {exc}")
+
+        try:
+            content = response["message"]["content"]
+            parsed = _parse_json_object(str(content))
+            corrected_text = str(parsed.get("corrected_text") or composed_text)
+            candidates = parsed.get("candidates")
+            if not isinstance(candidates, list):
+                candidates = [corrected_text] if corrected_text else []
+            candidates = [str(candidate) for candidate in candidates if str(candidate)]
+            note = str(parsed.get("note") or "")
+        except Exception as exc:
+            return _fallback_result(composed_text, self.model, "error", f"Invalid LLM JSON: {exc}")
+
+        return WordCorrectionResult(
+            corrected_text=corrected_text,
+            candidates=candidates,
+            note=note,
+            model=self.model,
+            status="ok",
+        )
+
+    def _post_json(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        http_request = request.Request(
+            f"{self.base_url}{path}",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with request.urlopen(http_request, timeout=30) as response:
+            return json.loads(response.read().decode("utf-8"))
+
+
+class DisabledWordCorrector:
+    def __init__(self, model: str = "disabled") -> None:
+        self.model = model
+
+    def correct(self, raw_jamo: str, composed_text: str) -> WordCorrectionResult:
+        return _fallback_result(composed_text, self.model, "unavailable", "LLM disabled")
+
+
+def _build_word_correction_prompt(raw_jamo: str, composed_text: str) -> str:
+    return f"""다음은 전시용 손 지화 인식 결과입니다.
+
+목표:
+- 창작 문장을 만들지 마세요.
+- 입력된 자모/음절을 가장 자연스러운 한국어 단어 또는 짧은 어절 후보로 보정하세요.
+- 확실하지 않으면 composed_text를 그대로 유지하세요.
+- JSON만 출력하세요.
+
+입력:
+- raw_jamo: {raw_jamo}
+- composed_text: {composed_text}
+
+출력 JSON 형식:
+{{
+  "corrected_text": "보정된 텍스트",
+  "candidates": ["후보1", "후보2"],
+  "note": "짧은 근거"
+}}
+"""
+
+
+def _parse_json_object(text: str) -> dict[str, Any]:
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        stripped = stripped.strip("`")
+        if stripped.startswith("json"):
+            stripped = stripped[4:].strip()
+    start = stripped.find("{")
+    end = stripped.rfind("}")
+    if start == -1 or end == -1 or end < start:
+        raise ValueError("JSON object not found")
+    parsed = json.loads(stripped[start : end + 1])
+    if not isinstance(parsed, dict):
+        raise ValueError("LLM response must be a JSON object")
+    return parsed
+
+
+def _fallback_result(composed_text: str, model: str, status: str, note: str) -> WordCorrectionResult:
+    candidates = [composed_text] if composed_text else []
+    return WordCorrectionResult(
+        corrected_text=composed_text,
+        candidates=candidates,
+        note=note,
+        model=model,
+        status=status,
+    )
