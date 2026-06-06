@@ -53,41 +53,63 @@ def compose_live(
             key = cv2.waitKey(1) & 0xFF
             if key == ord(" "):
                 break
-            if key in (10, 13) and prediction is not None:
-                composer.append(prediction.label)
-                print(f"jamo={composer.raw} text={composer.text}")
-                if event_store is not None:
-                    event_store.append("append", composer, prediction)
-            elif key in (8, 127):
-                composer.backspace()
-                print(f"jamo={composer.raw} text={composer.text}")
-                if event_store is not None:
-                    event_store.append("backspace", composer, prediction)
-            elif key == 9:
-                if word_corrector is None:
-                    last_correction = WordCorrectionResult(
-                        corrected_text=composer.text,
-                        candidates=[composer.text] if composer.text else [],
-                        note="LLM disabled",
-                        model="disabled",
-                        status="unavailable",
-                    )
-                else:
-                    last_correction = word_corrector.correct(composer.raw, composer.text)
-                print(
-                    f"finalize raw_jamo={composer.raw} "
-                    f"text={composer.text} "
-                    f"corrected={last_correction.corrected_text} "
-                    f"llm_status={last_correction.status}"
-                )
-                if event_store is not None:
-                    event_store.append("finalize", composer, prediction, last_correction)
+            last_correction = handle_compose_key(
+                key,
+                composer,
+                prediction,
+                event_store,
+                word_corrector,
+                last_correction,
+            )
     finally:
         if event_store is not None:
             event_store.append("stop", composer, None)
         extractor.close()
         cap.release()
         cv2.destroyWindow("ACC GeSTure live compose")
+
+
+def handle_compose_key(
+    key: int,
+    composer: HangulComposer,
+    prediction: JamoPrediction | None,
+    event_store: "ComposeEventStore | None" = None,
+    word_corrector: object | None = None,
+    last_correction: WordCorrectionResult | None = None,
+) -> WordCorrectionResult | None:
+    if key in (10, 13) and prediction is not None:
+        composer.append(prediction.label)
+        print(f"jamo={composer.raw} text={composer.text}")
+        if event_store is not None:
+            event_store.append("append", composer, prediction)
+        return last_correction
+    if key in (8, 127):
+        composer.backspace()
+        print(f"jamo={composer.raw} text={composer.text}")
+        if event_store is not None:
+            event_store.append("backspace", composer, prediction)
+        return last_correction
+    if key == 9:
+        if word_corrector is None:
+            correction = WordCorrectionResult(
+                corrected_text=composer.text,
+                candidates=[composer.text] if composer.text else [],
+                note="LLM disabled",
+                model="disabled",
+                status="unavailable",
+            )
+        else:
+            correction = word_corrector.correct(composer.raw, composer.text)
+        print(
+            f"finalize raw_jamo={composer.raw} "
+            f"text={composer.text} "
+            f"corrected={correction.corrected_text} "
+            f"llm_status={correction.status}"
+        )
+        if event_store is not None:
+            event_store.append("finalize", composer, prediction, correction)
+        return correction
+    return last_correction
 
 
 class ComposeEventStore:

@@ -78,6 +78,40 @@ This repository currently covers the vision/skeleton side of the mock-up:
 
 ## Chronological Notes
 
+## 2026-06-06 Seoul - compose keypath LLM verification
+
+### What changed
+
+- Refactored compose key handling into `handle_compose_key(...)`.
+- The live OpenCV loop now calls the same helper for Enter, Backspace, and Tab actions.
+- This keeps the user-facing behavior unchanged while making the Tab finalize path directly testable without relying on macOS window focus automation.
+
+### Verified
+
+- Ran `.venv/bin/python -m compileall src`.
+- Drove the same key handler with synthetic key codes:
+  - Enter for `ㄱ`
+  - Enter for `ㅏ`
+  - Enter for `ㅇ`
+  - Tab for finalize
+- Wrote `data/compose_keypath_llm_test.jsonl` with actions:
+  - `append`
+  - `append`
+  - `append`
+  - `finalize`
+- Latest finalize payload:
+  - `raw_jamo=ㄱㅏㅇ`
+  - `composed_text=강`
+  - `llm.status=ok`
+  - `llm.model=qwen2.5:7b-instruct`
+  - `llm.corrected_text=강`
+- Rendered `data/compose_keypath_overlay.jpg` with the correction payload to verify the overlay drawing path does not crash.
+
+### Remaining
+
+- This verifies the same code path used after OpenCV receives `Tab`, but it still does not prove macOS delivered a physical key press to the focused OpenCV window.
+- Final manual check remains: click the OpenCV compose window, press Enter for one or more jamo, press Tab, visually confirm corrected text appears, then press Space.
+
 ## 2026-06-06 Seoul - compose manual window verification attempt
 
 ### What happened
