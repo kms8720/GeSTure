@@ -78,6 +78,32 @@ This repository currently covers the vision/skeleton side of the mock-up:
 
 ## Chronological Notes
 
+## 2026-06-06 Seoul - compose manual Tab finalize verified
+
+### Command
+
+```sh
+.venv/bin/acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl --llm-model qwen2.5:7b-instruct
+```
+
+### Verified
+
+- OpenCV compose window opened with camera 0.
+- Manual Enter key presses appended jamo into `data/compose_session.jsonl`.
+- Manual Tab key triggered finalize and called the local Ollama model.
+- Latest verified finalize event:
+  - `raw_jamo=ㄱㅓㄱㅈㅡㅇㅎㅂ`
+  - `composed_text=걱증ㅎㅂ`
+  - `llm.status=ok`
+  - `llm.model=qwen2.5:7b-instruct`
+  - `llm.corrected_text=가치ㅎㅂ`
+- Manual Space key stopped the compose window and wrote a final `stop` event.
+
+### Notes
+
+- This completes the MacBook development validation for the Tab finalize to local LLM JSONL flow.
+- Recognition quality is still a separate future task; this test only verifies the compose/finalize/LLM plumbing.
+
 ## 2026-06-06 Seoul - compose keypath LLM verification
 
 ### What changed
