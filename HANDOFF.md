@@ -78,6 +78,33 @@ This repository currently covers the vision/skeleton side of the mock-up:
 
 ## Chronological Notes
 
+## 2026-06-06 Seoul - compose manual window verification attempt
+
+### What happened
+
+- Relaunched the compose window with the real Ollama development model:
+
+```sh
+.venv/bin/acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl --llm-model qwen2.5:7b-instruct
+```
+
+### Observed
+
+- Loaded 620 reference samples.
+- Camera index 0 opened successfully.
+- Compose window printed the expected controls:
+  - Enter commits current jamo.
+  - Backspace deletes.
+  - Tab finalizes.
+  - Space stops.
+- No new key events were written to `data/compose_session.jsonl` during this unattended run.
+- The process was stopped with Ctrl-C from the terminal, so this attempt does not count as the manual Tab/overlay verification.
+
+### Status
+
+- Automated Ollama finalize JSONL integration is verified with `llm.status=ok`.
+- Remaining manual check: focus the OpenCV compose window, press Enter for one or more jamo, press Tab, confirm corrected text appears on the overlay, then press Space and inspect the latest `finalize` event in `data/compose_session.jsonl`.
+
 ## 2026-06-06 Seoul - Ollama development model verification on MacBook
 
 ### What changed
