@@ -78,6 +78,53 @@ This repository currently covers the vision/skeleton side of the mock-up:
 
 ## Chronological Notes
 
+## 2026-06-06 Seoul - Ollama development model verification on MacBook
+
+### What changed
+
+- Installed Ollama for local development verification on the MacBook M1 Pro 16GB.
+- Initial `brew install ollama` installed formula version `0.30.6`, but model inference failed with HTTP 500 because `llama-server` was missing from the formula package.
+- Replaced it with the macOS app cask:
+  - `brew uninstall ollama`
+  - `brew install --cask ollama-app`
+  - `open -a Ollama`
+- The `ollama` CLI now resolves to the cask-provided binary at `/opt/homebrew/bin/ollama`.
+
+### Model
+
+- Pulled development model: `qwen2.5:7b-instruct`.
+- `ollama list` shows `qwen2.5:7b-instruct`, size 4.7 GB, quantization `Q4_K_M`.
+- Exhibition model target remains `qwen3:14b` on a stronger machine.
+
+### Verified
+
+- `ollama --version` reports `0.30.6`.
+- `curl http://localhost:11434/api/tags` lists `qwen2.5:7b-instruct`.
+- `.venv/bin/python -m compileall src` passed.
+- `.venv/bin/acc-gesture compose --help` shows `--llm-model`, `--ollama-url`, and `--no-llm`.
+- Project Ollama client returned `status=ok` for `raw_jamo=ㄱㅏㅇ`, `composed_text=강`.
+- Automated finalize JSONL integration wrote `data/compose_llm_integration.jsonl` with:
+  - `action=finalize`
+  - `raw_jamo=ㄱㅏㅇ`
+  - `composed_text=강`
+  - `llm.status=ok`
+  - `llm.model=qwen2.5:7b-instruct`
+  - `llm.corrected_text=강`
+- First real model request took about 9 seconds including model load; a later finalize request took about 3 seconds.
+
+### Not yet manually verified
+
+- The OpenCV compose window Tab key path and overlay display were not manually exercised in this unattended run.
+- Next manual check: run the compose window, press Enter for a few jamo, press Tab, confirm the overlay shows corrected text, then press Space.
+
+### Command
+
+```sh
+open -a Ollama
+ollama pull qwen2.5:7b-instruct
+.venv/bin/acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl --llm-model qwen2.5:7b-instruct
+```
+
 ## 2026-06-06 Seoul - local LLM finalize for compose
 
 ### What changed

@@ -43,11 +43,19 @@ Use `acc-gesture recognize --camera 0 --references data/reference_samples.jsonl`
 
 Use `acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl --llm-model qwen3:14b` to build Hangul text manually from live jamo predictions. Press Enter to append the current predicted jamo, Backspace to delete the last jamo, Tab to finalize and run local LLM word correction, and Space to stop. The overlay shows both raw jamo and composed Hangul text, such as `ㄱㅏㅇ` -> `강`. Compose events are saved as JSONL with the action, raw jamo buffer, composed text, current prediction, and LLM correction payload when finalized.
 
-For local LLM correction, install and run Ollama:
+For local LLM correction, install and run Ollama. On macOS, prefer the Ollama app cask so the bundled runtime server is available:
 
 ```sh
+brew install --cask ollama-app
+open -a Ollama
 ollama pull qwen3:14b
-ollama serve
+```
+
+On the current MacBook M1 Pro 16GB development machine, use the smaller fallback model:
+
+```sh
+ollama pull qwen2.5:7b-instruct
+acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl --llm-model qwen2.5:7b-instruct
 ```
 
 If Ollama is unavailable or returns invalid JSON, compose mode keeps running and saves the original composed text as the corrected text. Use `--no-llm` to disable LLM correction during testing. For the long-running exhibition machine, a Mac mini M4 Pro with at least 48GB unified memory is recommended; 64GB is preferred. The current MacBook M1 Pro 16GB is suitable for development and can use a smaller fallback model such as `qwen2.5:7b-instruct`.
