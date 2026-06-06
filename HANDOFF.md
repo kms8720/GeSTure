@@ -105,6 +105,13 @@ This repository currently covers the vision/skeleton side of the mock-up:
 - Automated Ollama finalize JSONL integration is verified with `llm.status=ok`.
 - Remaining manual check: focus the OpenCV compose window, press Enter for one or more jamo, press Tab, confirm corrected text appears on the overlay, then press Space and inspect the latest `finalize` event in `data/compose_session.jsonl`.
 
+### Follow-up autokey attempt
+
+- Tried a separate compose run with `data/compose_session_autokey.jsonl` and attempted to send `Enter`, `Tab`, and `Space` through macOS `System Events`.
+- AppleScript/System Events did not return successfully and no autokey JSONL log was created.
+- The compose process was stopped with Ctrl-C after confirming camera 0 opened and the overlay loop was running.
+- This means the remaining verification genuinely requires a focused OpenCV window and human key input, or a future code-level test hook for scripted key events.
+
 ## 2026-06-06 Seoul - Ollama development model verification on MacBook
 
 ### What changed
