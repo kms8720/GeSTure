@@ -260,11 +260,12 @@ ollama serve
 - Invalid LLM JSON falls back with `status=error`.
 - Unavailable Ollama falls back to original composed text.
 - `finalize` JSONL events include the expected `llm` payload.
+- Local Ollama actual API path was verified on this MacBook with installed model `qwen2.5:7b-instruct`; input `raw_jamo=ㄱㅏㅇ`, `composed_text=강` returned `status=ok`, `corrected_text=강`.
 - A 2-second camera smoke test loaded 620 reference samples, opened camera index 0, and wrote a `stop` event.
 
 ### Next concrete task
 
-Install Ollama/model on the target exhibition machine and manually verify Tab finalize with a real model response, then design the display/export flow for finalized corrected text.
+Install `qwen3:14b` on the target exhibition machine and manually verify Tab finalize with that model, then design the display/export flow for finalized corrected text.
 
 ## 2026-06-06 Seoul - compose session JSONL logging
 
