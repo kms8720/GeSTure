@@ -1,5 +1,6 @@
 from dataclasses import asdict, dataclass
 import json
+import re
 from typing import Any
 from urllib import error, request
 
@@ -60,9 +61,10 @@ class OllamaWordCorrector:
             if not isinstance(candidates, list):
                 candidates = [corrected_text] if corrected_text else []
             candidates = [str(candidate) for candidate in candidates if str(candidate)]
+            corrected_text, candidates = _validate_correction(composed_text, corrected_text, candidates)
             note = str(parsed.get("note") or "")
         except Exception as exc:
-            return _fallback_result(composed_text, self.model, "error", f"Invalid LLM JSON: {exc}")
+            return _fallback_result(composed_text, self.model, "error", f"Invalid LLM response: {exc}")
 
         return WordCorrectionResult(
             corrected_text=corrected_text,
@@ -99,6 +101,8 @@ def _build_word_correction_prompt(raw_jamo: str, composed_text: str) -> str:
 - 창작 문장을 만들지 마세요.
 - 입력된 자모/음절을 가장 자연스러운 한국어 단어 또는 짧은 어절 후보로 보정하세요.
 - 확실하지 않으면 composed_text를 그대로 유지하세요.
+- 로마자, 영어, 중국어, 일본어, 음역 표기를 절대 사용하지 마세요.
+- corrected_text와 candidates는 한글, 공백, 기본 문장부호만 포함해야 합니다.
 - JSON만 출력하세요.
 - JSON 키와 문자열 값은 반드시 큰따옴표를 사용하세요.
 
@@ -129,6 +133,27 @@ def _parse_json_object(text: str) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise ValueError("LLM response must be a JSON object")
     return parsed
+
+
+_KOREAN_TEXT_RE = re.compile(r"^[가-힣ㄱ-ㅎㅏ-ㅣ\s.,!?~'\"()\\-]*$")
+
+
+def _validate_correction(
+    composed_text: str,
+    corrected_text: str,
+    candidates: list[str],
+) -> tuple[str, list[str]]:
+    if not _is_allowed_korean_text(corrected_text):
+        raise ValueError(f"LLM correction contains unsupported characters: {corrected_text}")
+
+    valid_candidates = [candidate for candidate in candidates if _is_allowed_korean_text(candidate)]
+    if not valid_candidates and corrected_text:
+        valid_candidates = [corrected_text]
+    return corrected_text, valid_candidates
+
+
+def _is_allowed_korean_text(text: str) -> bool:
+    return bool(_KOREAN_TEXT_RE.fullmatch(text))
 
 
 def _fallback_result(composed_text: str, model: str, status: str, note: str) -> WordCorrectionResult:

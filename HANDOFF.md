@@ -262,6 +262,7 @@ ollama serve
 - `finalize` JSONL events include the expected `llm` payload.
 - Local Ollama actual API path was verified on this MacBook with installed model `qwen2.5:7b-instruct`; input `raw_jamo=ㄱㅏㅇ`, `composed_text=강` returned `status=ok`, `corrected_text=강`.
 - Compose LLM calls now request Ollama JSON mode with `temperature=0` after a live test showed occasional malformed JSON from `qwen2.5:7b-instruct`; fallback remains in place for invalid model output.
+- LLM corrections are now rejected if they contain unsupported characters such as Latin text; a live test produced `아프배아얘bias Ips`, so the guard falls back to the original composed text instead of showing the mixed-language hallucination.
 - A 2-second camera smoke test loaded 620 reference samples, opened camera index 0, and wrote a `stop` event.
 
 ### Next concrete task
