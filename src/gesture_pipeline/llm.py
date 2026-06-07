@@ -30,12 +30,15 @@ class OllamaWordCorrector:
         payload = {
             "model": self.model,
             "stream": False,
+            "format": "json",
+            "options": {"temperature": 0},
             "messages": [
                 {
                     "role": "system",
                     "content": (
                         "You correct Korean words from noisy fingerspelling recognition. "
-                        "Return only valid JSON. Do not write explanations outside JSON."
+                        "Return only valid JSON with double-quoted keys and string values. "
+                        "Do not write explanations outside JSON."
                     ),
                 },
                 {"role": "user", "content": prompt},
@@ -97,6 +100,7 @@ def _build_word_correction_prompt(raw_jamo: str, composed_text: str) -> str:
 - 입력된 자모/음절을 가장 자연스러운 한국어 단어 또는 짧은 어절 후보로 보정하세요.
 - 확실하지 않으면 composed_text를 그대로 유지하세요.
 - JSON만 출력하세요.
+- JSON 키와 문자열 값은 반드시 큰따옴표를 사용하세요.
 
 입력:
 - raw_jamo: {raw_jamo}
