@@ -78,6 +78,36 @@ This repository currently covers the vision/skeleton side of the mock-up:
 
 ## Chronological Notes
 
+## 2026-06-08 Seoul - free LLM 1-4 syllable word correction
+
+### What changed
+
+- Replaced the small exhibition-safe vocabulary steering policy with free LLM correction.
+- `acc-gesture compose` Tab finalize now asks Ollama to choose one meaningful Korean word from 1 to 4 Hangul syllables based on `raw_jamo` and `composed_text`.
+- The app validates the final correction locally:
+  - must be complete Hangul syllables only (`가-힣`);
+  - must be 1 to 4 characters;
+  - no spaces, jamo, English, numbers, punctuation, Hanja, or Japanese.
+- If the first model response fails validation, the app sends one repair prompt.
+- After format validation, the app sends one semantic check prompt so the model can reject awkward invented combinations and replace them with a real Korean word.
+- After semantic checking, `candidates` is narrowed to the final accepted word to avoid logging/displaying awkward rejected alternatives.
+- If the model still fails validation after retry, the final fallback word is `안녕`.
+
+### Verified
+
+- `python -m compileall src` passed.
+- Actual local Ollama model `qwen2.5:7b-instruct` was tested through the project client:
+  - `양ㅍ얲파하ㅏ야ㅒ뱝` -> `양파`
+  - `ㅏ앺ㅍ배ㅏ얘뱌ㅣㅇㅂ` -> `사랑`
+  - `ㄱㅏㅇ` / `강` -> `강`
+  - `ㅅㅏㄹㅏㅇ` / `사랑` -> `사랑`
+
+### Notes
+
+- This supersedes the 2026-06-07 small fixed safe-vocabulary behavior.
+- The correction layer is now intentionally interpretive: noisy jamo input is treated as material for selecting a readable Korean word, not as text that must be preserved literally.
+- The result still depends on the LLM, so the same policy should be re-tested with the exhibition target model `qwen3:14b`.
+
 ## 2026-06-06 Seoul - compose manual Tab finalize verified
 
 ### Command

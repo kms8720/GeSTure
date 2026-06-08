@@ -41,7 +41,7 @@ When `data/reference_samples.jsonl` exists, `acc-gesture run` uses a nearest-ref
 
 Use `acc-gesture recognize --camera 0 --references data/reference_samples.jsonl` to check jamo recognition live. The camera window shows labels such as `ㄱ-giyeok` in the upper-left corner. Press space in the window to stop. Korean overlay text is rendered with Pillow and a Korean-capable system font, such as Apple SD Gothic Neo on macOS.
 
-Use `acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl --llm-model qwen3:14b` to build Hangul text manually from live jamo predictions. Press Enter to append the current predicted jamo, Backspace to delete the last jamo, Tab to finalize and run local LLM word correction, and Space to stop. The overlay shows both raw jamo and composed Hangul text, such as `ㄱㅏㅇ` -> `강`. Compose events are saved as JSONL with the action, raw jamo buffer, composed text, current prediction, and LLM correction payload when finalized.
+Use `acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl --llm-model qwen3:14b` to build Hangul text manually from live jamo predictions. Press Enter to append the current predicted jamo, Backspace to delete the last jamo, Tab to finalize and run local LLM word correction, and Space to stop. The overlay shows both raw jamo and composed Hangul text, such as `ㄱㅏㅇ` -> `강`. On Tab, the LLM chooses one meaningful 1-4 syllable Korean word that best matches the noisy jamo/composed input. Compose events are saved as JSONL with the action, raw jamo buffer, composed text, current prediction, and LLM correction payload when finalized.
 
 For local LLM correction, install and run Ollama. On macOS, prefer the Ollama app cask so the bundled runtime server is available:
 
@@ -58,7 +58,7 @@ ollama pull qwen2.5:7b-instruct
 acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl --llm-model qwen2.5:7b-instruct
 ```
 
-If Ollama is unavailable or returns invalid JSON, compose mode keeps running and saves the original composed text as the corrected text. Use `--no-llm` to disable LLM correction during testing. For the long-running exhibition machine, a Mac mini M4 Pro with at least 48GB unified memory is recommended; 64GB is preferred. The current MacBook M1 Pro 16GB is suitable for development and can use a smaller fallback model such as `qwen2.5:7b-instruct`.
+LLM corrections are locally validated before display/logging: the final word must be 1-4 complete Hangul syllables, with no spaces, jamo, English, numbers, punctuation, Hanja, or Japanese. If the first response fails validation, the app retries once with a repair prompt, then runs a semantic check to avoid awkward invented combinations. If Ollama is unavailable, compose mode keeps running and saves the original composed text as the corrected text; if the model fails validation after retry, the final fallback word is `안녕`. Use `--no-llm` to disable LLM correction during testing. For the long-running exhibition machine, a Mac mini M4 Pro with at least 48GB unified memory is recommended; 64GB is preferred. The current MacBook M1 Pro 16GB is suitable for development and can use a smaller fallback model such as `qwen2.5:7b-instruct`.
 
 ## Korean Fingerspelling Reference
 
