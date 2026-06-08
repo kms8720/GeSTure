@@ -1,73 +1,197 @@
 # ACC GeSTure Algorithm
 
-Python pipeline for the mock-up stage of the ACC GeSTure project.
+ACCxGMAP 전시 mock-up 단계의 로봇손/지화 알고리즘 프로젝트다. 현재 구현은 두 축으로 구성된다.
 
-The first goal is to sample the robot hand with a camera every second, extract skeletal hand landmarks, normalize them so camera placement matters less, and turn each captured pose into a jamo candidate.
+1. Python 기반 skeletal camera pipeline
+2. `virtual-hand-rigged-final/` 웹 기반 가상 로봇손 + 5비트 자모 인식 데모
 
-## Current Pipeline
+기존 `HANDOFF.md` 내용은 이 README에 병합했다. 앞으로 팀원 인수인계는 이 파일과 `virtual-hand-rigged-final/README.md`를 기준으로 한다.
 
-1. Capture a camera frame every 1 second.
-2. Extract 21 hand landmarks using MediaPipe.
-3. Normalize landmarks around the wrist and palm scale.
-4. Classify the pose with captured reference skeleton samples when available.
-5. Store timestamped jamo candidates as JSONL.
+## 현재 결론
 
-## Run
+실제/가상 카메라 화면을 MediaPipe Hands에 넣는 방식은 실험 경로로 남겨두되, 현재 발표용 주 경로는 가상 로봇손 상태를 직접 읽는 방식이다.
 
-Use Python 3.10, 3.11, or 3.12 with `mediapipe==0.10.14`. Newer MediaPipe wheels may not expose the legacy `mp.solutions.hands` API used by this mock-up pipeline.
+```txt
+관객 controller slider
+  -> 가상 로봇손 handState
+  -> 5비트 자모 인식
+  -> 자모 자동 누적
+  -> 6개 자모 단위 단어 보정
+  -> /display와 /recognition에 표시
+```
+
+가상 손 GLB 화면 캡처를 축소해서 손 전체가 보이게 넣어도 MediaPipe Hands는 현재 로봇손을 사람 손으로 인식하지 못했다. 대신 GLB pivot/world position에서 21개 virtual skeleton을 직접 뽑는 경로는 정상 동작한다.
+
+## 가상 로봇손 발표 데모
+
+위치:
+
+```txt
+virtual-hand-rigged-final/
+```
+
+실행:
+
+```powershell
+cd C:\Users\kangm\Documents\ACC-project\virtual-hand-rigged-final
+$env:Path = 'C:\Program Files\nodejs;' + $env:Path
+npm install
+npm run build
+npm start
+```
+
+화면:
+
+```txt
+Display:     http://127.0.0.1:3001/display
+Recognition: http://127.0.0.1:3001/recognition
+Links:       http://127.0.0.1:3001/links
+```
+
+발표 때는 `/display`와 `/recognition` 두 창을 띄운다.
+
+5비트 규칙:
+
+```txt
+손가락 순서: 엄지 -> 검지 -> 중지 -> 약지 -> 소지
+0~49        접힘 = 0
+50~100      펴짐 = 1
+0~30        ㄱ부터 ㅢ까지 31개 자모
+31          모든 손가락 펴짐/rest, 자모 미입력
+```
+
+자모 mapping:
+
+```txt
+0  ㄱ   1  ㄴ   2  ㄷ   3  ㄹ   4  ㅁ   5  ㅂ   6  ㅅ   7  ㅇ
+8  ㅈ   9  ㅊ   10 ㅋ   11 ㅌ   12 ㅍ   13 ㅎ
+14 ㅏ   15 ㅑ   16 ㅓ   17 ㅕ   18 ㅗ   19 ㅛ   20 ㅜ   21 ㅠ
+22 ㅡ   23 ㅣ   24 ㅐ   25 ㅒ   26 ㅔ   27 ㅖ   28 ㅚ   29 ㅟ   30 ㅢ
+```
+
+Synthetic training sample:
+
+```txt
+31 labels x 24 samples = 744 samples
+open sample range:   80~100
+closed sample range: 0~20
+classification threshold: 50
+```
+
+자동 입력:
+
+```txt
+추정 자모가 바뀌면 buffer에 자동 추가
+같은 자모가 연속으로 들어오면 중복 추가하지 않음
+buffer가 6개가 되면 Hangul compose + local vocabulary correction
+최종 단어는 /display의 AUTO WORD 카드에 표시
+```
+
+검증된 예:
+
+```txt
+입력: ㄱㅏㅇㅅㅏㄴ
+compose: 강산
+correctedWord: 강산
+중복 테스트: ㄱ, ㄱ, ㄴ -> buffer ㄱㄴ
+```
+
+자세한 웹 구조와 Blender pivot 정보는 `virtual-hand-rigged-final/README.md`를 본다.
+
+## Python Pipeline
+
+Python 쪽은 기존 카메라/skeleton 실험과 virtual skeleton 확인용으로 유지한다.
+
+설치:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e .
+```
+
+Python version:
+
+```txt
+Python 3.10, 3.11, or 3.12
+mediapipe==0.10.14
+```
+
+주요 명령:
+
+```powershell
+acc-gesture check --no-camera
 acc-gesture check --camera 0 --save-frame data/check_frame.jpg
-acc-gesture check --scan-cameras --max-camera-index 3
 acc-gesture preview --camera 0
 acc-gesture capture --label ㄱ --camera 0 --samples 20 --output data/reference_samples.jsonl
 acc-gesture recognize --camera 0 --references data/reference_samples.jsonl
-acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl --llm-model qwen3:14b
-acc-gesture run --camera 0 --interval 1.0 --output data/session.jsonl
+acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl
+acc-gesture screen-check --image data\virtual_hand_open_zoomout.png --save-overlay data\virtual_hand_open_zoomout_overlay.png
+acc-gesture virtual-check --url http://127.0.0.1:3001/virtual-skeleton --no-recognizer
+acc-gesture virtual-capture --label test_open --url http://127.0.0.1:3001/virtual-skeleton --samples 5 --output data\virtual_reference_samples_test.jsonl
 ```
 
-Press `q` in the camera preview window to stop.
+Python pipeline 상태:
 
-`acc-gesture check --no-camera` only checks the Python environment and installed packages.
-
-Use `acc-gesture preview --camera 0` on a camera-equipped laptop to visually inspect whether the hand skeleton points and lines are tracking correctly.
-
-Use `acc-gesture capture --label ㄱ --camera 0 --samples 20` to save labeled skeleton references. The current reference set covers `ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅅ ㅇ ㅈ ㅊ ㅋ ㅌ ㅍ ㅎ ㅏ ㅑ ㅓ ㅕ ㅗ ㅛ ㅜ ㅠ ㅡ ㅣ ㅐ ㅒ ㅔ ㅖ ㅚ ㅟ ㅢ`.
-
-When `data/reference_samples.jsonl` exists, `acc-gesture run` uses a nearest-reference recognizer. If the file is missing, it falls back to the placeholder recognizer.
-
-Use `acc-gesture recognize --camera 0 --references data/reference_samples.jsonl` to check jamo recognition live. The camera window shows labels such as `ㄱ-giyeok` in the upper-left corner. Press space in the window to stop. Korean overlay text is rendered with Pillow and a Korean-capable system font, such as Apple SD Gothic Neo on macOS.
-
-Use `acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl --llm-model qwen3:14b` to build Hangul text manually from live jamo predictions. Press Enter to append the current predicted jamo, Backspace to delete the last jamo, Tab to finalize and run local LLM word correction, and Space to stop. The overlay shows both raw jamo and composed Hangul text, such as `ㄱㅏㅇ` -> `강`. On Tab, the LLM chooses one meaningful 1-4 syllable Korean word that best matches the noisy jamo/composed input. Compose events are saved as JSONL with the action, raw jamo buffer, composed text, current prediction, and LLM correction payload when finalized.
-
-For local LLM correction, install and run Ollama. On macOS, prefer the Ollama app cask so the bundled runtime server is available:
-
-```sh
-brew install --cask ollama-app
-open -a Ollama
-ollama pull qwen3:14b
+```txt
+MediaPipe camera skeleton extraction: 구현됨
+Skeleton normalization: 구현됨
+Reference sample capture/nearest recognizer: 구현됨
+Manual jamo compose + Ollama correction: 구현됨
+Virtual screen capture MediaPipe check: 구현됨, 현재 no hand detected
+Virtual skeleton fetch/capture/check: 구현됨
 ```
 
-On the current MacBook M1 Pro 16GB development machine, use the smaller fallback model:
+## 파일 구조
 
-```sh
-ollama pull qwen2.5:7b-instruct
-acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl --llm-model qwen2.5:7b-instruct
+```txt
+src/gesture_pipeline/
+  skeleton.py          MediaPipe 21 landmark extractor
+  virtual_skeleton.py  /virtual-skeleton API fetch/capture/check
+  screen_check.py      captured screen image MediaPipe 검사
+  recognizer.py        nearest-reference recognizer
+  hangul.py            jamo compose
+  llm.py               Ollama word correction
+  cli.py               acc-gesture command entrypoint
+
+virtual-hand-rigged-final/
+  server/binaryJamo.ts 5비트 자모 mapping/sample/correction
+  server/index.ts      Express + Socket.IO API
+  client/src/pages/    display, recognition, links, controller
+  client/src/components/VirtualHand.tsx
+  public/models/robot_hand_rig.glb
 ```
 
-LLM corrections are locally validated before display/logging: the final word must be 1-4 complete Hangul syllables, with no spaces, jamo, English, numbers, punctuation, Hanja, or Japanese. If the first response fails validation, the app retries once with a repair prompt, then runs a semantic check to avoid awkward invented combinations. If Ollama is unavailable, compose mode keeps running and saves the original composed text as the corrected text; if the model fails validation after retry, the final fallback word is `안녕`. Use `--no-llm` to disable LLM correction during testing. For the long-running exhibition machine, a Mac mini M4 Pro with at least 48GB unified memory is recommended; 64GB is preferred. The current MacBook M1 Pro 16GB is suitable for development and can use a smaller fallback model such as `qwen2.5:7b-instruct`.
+## 검증 명령
 
-## Korean Fingerspelling Reference
+```powershell
+.\.venv\Scripts\python.exe -m compileall src
 
-The Korean consonant/vowel fingerspelling poses used for the current jamo reference set are based on this Naver Blog reference page: <https://blog.naver.com/minacyworld/222236459553>.
+cd virtual-hand-rigged-final
+$env:Path = 'C:\Program Files\nodejs;' + $env:Path
+npx tsc -p tsconfig.server.json --noEmit
+npm run build
+```
 
-## Next Implementation Steps
+서버 실행 후 API smoke test:
 
-1. Review recognition accuracy with the captured reference set.
-2. Add per-letter confidence thresholds and repeated-frame smoothing.
-3. Review finalized LLM correction logs from `data/compose_session.jsonl`.
-4. Add display/export handling for finalized corrected text.
-5. Render generated text/image states for exhibition display.
+```powershell
+Invoke-RestMethod -Uri 'http://127.0.0.1:3001/health'
+Invoke-RestMethod -Uri 'http://127.0.0.1:3001/training-samples'
+Invoke-RestMethod -Uri 'http://127.0.0.1:3001/recognition-state'
+```
+
+## Coordination
+
+- 작업 시작 전 가능하면 `git pull --rebase origin main`.
+- Windows에서 `git`이 PATH에 없으면 `C:\Program Files\Git\cmd\git.exe`를 사용.
+- 변경 후에는 Python compile, TypeScript check, Vite build를 최소 검증으로 실행.
+- 가상 손 폴더의 `node_modules/`, `dist/`, `*.log`는 커밋하지 않는다.
+- `public/models/robot_hand_rig.glb`는 약 68MB이므로 GitHub push가 부담되면 Git LFS 전환을 검토한다.
+
+## 다음 작업
+
+1. 발표 문맥에 맞춰 local correction vocabulary를 확장한다.
+2. 여러 관객이 동시에 움직일 때 transient bit가 너무 많이 들어오면 300~500ms smoothing을 추가한다.
+3. 필요하면 31개 자모 mapping 순서를 실제 발표 시나리오에 맞게 재배열한다.
+4. virtual skeleton confidence를 5비트 인식 UI에 더 적극적으로 반영한다.

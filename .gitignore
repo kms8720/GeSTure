@@ -10,3 +10,7 @@ data/
 *.log
 .env
 .env.*
+
+node_modules/
+dist/
+.DS_Store

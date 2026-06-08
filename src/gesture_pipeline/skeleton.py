@@ -9,6 +9,7 @@ class MediaPipeHandExtractor:
     def __init__(
         self,
         max_hands: int = 1,
+        static_image_mode: bool = False,
         min_detection_confidence: float = 0.5,
         min_tracking_confidence: float = 0.5,
     ) -> None:
@@ -19,7 +20,7 @@ class MediaPipeHandExtractor:
                 "or migrate this extractor to mediapipe.tasks."
             )
         self._hands = mp.solutions.hands.Hands(
-            static_image_mode=False,
+            static_image_mode=static_image_mode,
             max_num_hands=max_hands,
             min_detection_confidence=min_detection_confidence,
             min_tracking_confidence=min_tracking_confidence,

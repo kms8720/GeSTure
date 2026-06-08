@@ -16,6 +16,13 @@ from gesture_pipeline.llm import DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_URL, Disab
 from gesture_pipeline.pipeline import GesturePipeline
 from gesture_pipeline.preview import preview_skeleton
 from gesture_pipeline.recognizer import PlaceholderRecognizer, ReferenceRecognizer
+from gesture_pipeline.screen_check import check_screen_image
+from gesture_pipeline.skeleton import SkeletonNormalizer
+from gesture_pipeline.virtual_skeleton import (
+    DEFAULT_VIRTUAL_SKELETON_URL,
+    capture_virtual_reference_samples,
+    check_virtual_skeleton,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -60,6 +67,33 @@ def build_parser() -> argparse.ArgumentParser:
     capture_parser.add_argument("--interval", type=float, default=0.25, help="Seconds between saved samples.")
     capture_parser.add_argument("--output", type=Path, default=Path("data/reference_samples.jsonl"))
     capture_parser.add_argument("--no-preview", action="store_true", help="Disable live skeleton preview.")
+
+    screen_parser = subparsers.add_parser(
+        "screen-check",
+        help="Run MediaPipe hand detection on a captured virtual-hand screen image.",
+    )
+    screen_parser.add_argument("--image", type=Path, required=True, help="Screen capture image to inspect.")
+    screen_parser.add_argument("--save-overlay", type=Path, default=None, help="Optional output image with overlay.")
+    screen_parser.add_argument("--min-detection-confidence", type=float, default=0.5)
+
+    virtual_check_parser = subparsers.add_parser(
+        "virtual-check",
+        help="Read GLB-derived virtual skeleton landmarks from the virtual hand server.",
+    )
+    virtual_check_parser.add_argument("--url", default=DEFAULT_VIRTUAL_SKELETON_URL)
+    virtual_check_parser.add_argument("--references", type=Path, default=Path("data/reference_samples.jsonl"))
+    virtual_check_parser.add_argument("--neighbors", type=int, default=3, help="Reference samples to average per label.")
+    virtual_check_parser.add_argument("--no-recognizer", action="store_true", help="Only validate skeleton input.")
+
+    virtual_capture_parser = subparsers.add_parser(
+        "virtual-capture",
+        help="Capture virtual skeleton reference samples from the virtual hand server.",
+    )
+    virtual_capture_parser.add_argument("--label", required=True)
+    virtual_capture_parser.add_argument("--url", default=DEFAULT_VIRTUAL_SKELETON_URL)
+    virtual_capture_parser.add_argument("--samples", type=int, default=20)
+    virtual_capture_parser.add_argument("--interval", type=float, default=0.25)
+    virtual_capture_parser.add_argument("--output", type=Path, default=Path("data/virtual_reference_samples.jsonl"))
 
     add_run_arguments(parser)
     return parser
@@ -108,6 +142,32 @@ def main() -> None:
             samples=args.samples,
             interval_sec=args.interval,
             show_preview=not args.no_preview,
+        )
+        return
+    if args.command == "screen-check":
+        result = check_screen_image(
+            image_path=args.image,
+            save_overlay=args.save_overlay,
+            min_detection_confidence=args.min_detection_confidence,
+        )
+        ok = print_check_report(result.items)
+        raise SystemExit(0 if ok else 1)
+    if args.command == "virtual-check":
+        items, hand = check_virtual_skeleton(args.url)
+        ok = print_check_report(items)
+        if ok and hand is not None and not args.no_recognizer:
+            normalizer = SkeletonNormalizer()
+            recognizer = build_recognizer(args.references, args.neighbors)
+            prediction = recognizer.predict(normalizer.normalize(hand))
+            print(f"prediction: {prediction.label} ({prediction.confidence:.2f})")
+        raise SystemExit(0 if ok else 1)
+    if args.command == "virtual-capture":
+        capture_virtual_reference_samples(
+            label=args.label,
+            url=args.url,
+            output_path=args.output,
+            samples=args.samples,
+            interval_sec=args.interval,
         )
         return
 
