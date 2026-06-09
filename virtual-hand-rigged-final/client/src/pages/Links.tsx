@@ -11,6 +11,11 @@ function getBaseUrl(): string
   return window.location.origin;
 }
 
+function getLanLinksExample(): string
+{
+  return `${window.location.protocol}//노트북_IP:${window.location.port || '3001'}/links`;
+}
+
 export default function Links({ serverOnline }: LinksProps)
 {
   const baseUrl = getBaseUrl();
@@ -34,7 +39,7 @@ export default function Links({ serverOnline }: LinksProps)
         {isLocalhost && (
           <section className="network-warning glass-card">
             현재 <strong>localhost</strong>로 열려 있다. 휴대폰 QR 접속을 하려면 노트북 IP로 다시 열어야 한다.
-            <code>http://노트북_IP:3001/links</code>
+            <code>{getLanLinksExample()}</code>
           </section>
         )}
 

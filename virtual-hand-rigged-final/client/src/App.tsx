@@ -60,6 +60,12 @@ export default function App()
     socket.on('controller:state', handleControllerState);
     socket.on('controller:count', handleControllerCount);
     socket.on('recognition:state', handleRecognitionState);
+    setServerOnline(socket.connected);
+
+    if (!socket.connected)
+    {
+      socket.connect();
+    }
 
     return () =>
     {
