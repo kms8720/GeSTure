@@ -5,7 +5,7 @@ ACCxGMAP 전시 mock-up 단계의 로봇손/지화 알고리즘 프로젝트다.
 1. Python 기반 skeletal camera pipeline
 2. `virtual-hand-rigged-final/` 웹 기반 가상 로봇손 + 5비트 자모 인식 데모
 
-기존 `HANDOFF.md` 내용은 이 README에 병합했다. 앞으로 팀원 인수인계는 이 파일과 `virtual-hand-rigged-final/README.md`를 기준으로 한다.
+이 README는 자모 인식 알고리즘 README와 가상 로봇손 웹앱 README의 핵심 내용을 통합한 문서다. 실행/테스트/구현 상태를 빠르게 확인하려면 이 파일을 먼저 보고, 세부 인수인계와 진행 이력은 `HANDOFF.md`를 본다. 웹앱 내부 구조의 세부 설명은 `virtual-hand-rigged-final/README.md`에도 남겨둔다.
 
 ## 현재 결론
 
