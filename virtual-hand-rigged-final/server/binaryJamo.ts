@@ -305,7 +305,9 @@ async function requestOllamaCorrection(prompt: string): Promise<unknown>
           content: [
             'You convert noisy Korean jamo recognition into one meaningful Korean word.',
             'You may reorder jamo, drop extra jamo, merge duplicate jamo, and infer missing jamo.',
-            'The final correctedWord must be exactly one real Korean word between 1 and 4 Hangul syllables.',
+            'The final correctedWord must be exactly one common everyday Korean word between 1 and 4 Hangul syllables.',
+            'Prefer words that most visitors immediately understand, such as emotions, objects, nature, relationships, and simple actions.',
+            'Avoid proper nouns, place names, personal names, rare Sino-Korean words, technical terms, archaic words, and ambiguous obscure words.',
             'Return only valid JSON.'
           ].join(' ')
         },
@@ -328,9 +330,13 @@ function buildCorrectionPrompt(rawJamo: string, composedText: string): string
   return `다음은 전시용 로봇손 5비트 자모 인식 결과입니다.
 
 목표:
-- rawJamo에 들어온 자모들을 재료로 보고, 가장 그럴듯한 1~4글자의 의미 있는 한국어 단어 하나를 고르세요.
+- rawJamo에 들어온 자모들을 재료로 보고, 가장 그럴듯한 1~4글자의 쉽고 일상적인 한국어 단어 하나를 고르세요.
 - 입력 순서는 참고만 하세요. 필요하면 자모 순서를 바꾸거나, 일부 자모를 버리거나, 중복 자모를 합치거나, 빠진 자모를 조금 보완해도 됩니다.
 - 단, 입력에 포함된 자모를 최대한 많이 설명할 수 있는 단어를 우선하세요.
+- 전시 관객 대부분이 바로 이해할 수 있는 단어를 고르세요.
+- 감정, 사물, 자연, 관계, 몸, 간단한 행동에 가까운 단어를 우선하세요.
+- 지명, 인명, 고유명사, 전문용어, 옛말, 드문 한자어, 의미가 모호한 단어는 금지입니다.
+- 예를 들어 "병천"처럼 실제 단어 또는 지명일 수 있어도 일상적 의미가 바로 떠오르지 않는 단어는 고르지 마세요.
 - correctedWord는 반드시 완성형 한글 음절만 포함해야 합니다.
 - 공백, 문장, 영어, 숫자, 낱자 자모, 한자, 일본어는 금지입니다.
 - 입력 조각을 억지로 붙인 새 단어가 아니라 한국어 화자가 실제로 쓰는 단어여야 합니다.
@@ -355,9 +361,12 @@ function buildSemanticCheckPrompt(rawJamo: string, composedText: string, correct
   return `다음 보정 결과를 검수하세요.
 
 검수 기준:
-- correctedWord는 1~4글자의 실제 한국어 단어여야 합니다.
+- correctedWord는 1~4글자의 쉽고 일상적인 한국어 단어여야 합니다.
+- 전시 관객 대부분이 바로 이해할 수 있는 감정, 사물, 자연, 관계, 몸, 간단한 행동 관련 단어를 우선합니다.
 - rawJamo의 순서는 바꿔도 되지만, 입력된 자모들과 형태/발음상 관련이 있어야 합니다.
 - 의미가 불분명한 조합어, 영어, 낱자 자모, 문장, 공백 포함 결과는 실패입니다.
+- 지명, 인명, 고유명사, 전문용어, 옛말, 드문 한자어, 의미가 모호한 단어는 실패입니다.
+- "병천"처럼 관객이 보편적인 의미를 바로 이해하기 어려운 단어는 실패입니다.
 - 실패라면 같은 rawJamo를 재배열/부분 사용해서 더 자연스러운 실제 한국어 단어로 교체하세요.
 - JSON만 출력하세요.
 
@@ -383,7 +392,9 @@ function buildRepairPrompt(rawJamo: string, composedText: string, reason: string
 ${reason}
 
 다시 출력하세요.
-- correctedWord는 1~4글자의 실제 한국어 단어 하나입니다.
+- correctedWord는 1~4글자의 쉽고 일상적인 한국어 단어 하나입니다.
+- 감정, 사물, 자연, 관계, 몸, 간단한 행동 관련 단어를 우선하세요.
+- 지명, 인명, 고유명사, 전문용어, 옛말, 드문 한자어, 의미가 모호한 단어는 금지입니다.
 - rawJamo 순서 변경, 일부 삭제, 중복 병합을 허용합니다.
 - 완성형 한글 음절만 허용합니다.
 - JSON만 출력하세요.
