@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import FingerController from '../components/FingerController';
 import { socket } from '../socket/socket';
-import { FingerName, FINGER_LABELS, FINGER_ORDER, HandState } from '../socket/types';
+import { FingerName, FINGER_ORDER, HandState } from '../socket/types';
 
 type ControllerProps = {
   handState: HandState;
@@ -61,10 +61,6 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
           serverOnline={serverOnline}
           onChange={handleChange}
         />
-
-        <p className="controller-caption">
-          이 화면은 {FINGER_LABELS[finger]} 하나만 조종한다. 여러 조종자의 값이 모여 하나의 손 모양을 만든다.
-        </p>
       </div>
     </main>
   );

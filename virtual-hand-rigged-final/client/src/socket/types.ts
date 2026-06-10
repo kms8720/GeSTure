@@ -61,7 +61,7 @@ export const FINGER_LABELS: Record<FingerName, string> = {
   index: '검지',
   middle: '중지',
   ring: '약지',
-  pinky: '새끼'
+  pinky: '소지'
 };
 
 export const FINGER_ORDER: FingerName[] = ['thumb', 'index', 'middle', 'ring', 'pinky'];

@@ -18,7 +18,7 @@ export default function Recognition({ recognitionState, serverOnline }: Recognit
         <div>
           <p className="eyebrow">SKELETAL JAMO RECOGNITION</p>
           <h1>자모 추정 모니터</h1>
-          <p>엄지부터 새끼까지 5비트로 읽고, 6개 자모가 쌓이면 자동으로 단어를 보정한다.</p>
+          <p>엄지부터 소지까지 5비트로 읽고, 6개 자모가 쌓이면 자동으로 단어를 보정한다.</p>
         </div>
         <div className="recognition-actions">
           <Link className="hud-pill" to="/display">DISPLAY</Link>
