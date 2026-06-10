@@ -138,15 +138,21 @@ npm start
 접속:
 
 ```txt
-Display:     http://127.0.0.1:3001/display
-Recognition: http://127.0.0.1:3001/recognition
-Links:       http://127.0.0.1:3001/links
+Display:     http://DEVICE_IP:3001/display
+Recognition: http://DEVICE_IP:3001/recognition
+Links:       http://DEVICE_IP:3001/links
 ```
 
-휴대폰 QR을 쓰려면 `localhost`가 아니라 같은 Wi-Fi의 노트북 IP로 `/links`를 열어야 한다.
+휴대폰 QR을 쓰려면 `127.0.0.1`이나 `localhost`가 아니라, 테스트창을 실행하는 노트북/디바이스의 같은 Wi-Fi IP를 항상 사용한다. 예를 들어 Mac에서는 다음으로 IP를 확인한다.
+
+```sh
+ipconfig getifaddr en0
+```
+
+예:
 
 ```txt
-http://노트북_IP:3001/links
+http://192.168.0.129:3001/links
 ```
 
 웹앱 세부 구조와 운영법은 `virtual-hand-rigged-final/README.md`를 본다.

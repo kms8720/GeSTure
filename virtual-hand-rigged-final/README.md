@@ -60,21 +60,29 @@ npm start
 접속:
 
 ```txt
-Display:           http://127.0.0.1:3001/display
-Recognition:       http://127.0.0.1:3001/recognition
-Links:             http://127.0.0.1:3001/links
-Health:            http://127.0.0.1:3001/health
-Hand state:        http://127.0.0.1:3001/hand-state
-Recognition state: http://127.0.0.1:3001/recognition-state
-Training samples:  http://127.0.0.1:3001/training-samples
-Virtual skeleton:  http://127.0.0.1:3001/virtual-skeleton
+Display:           http://DEVICE_IP:3001/display
+Recognition:       http://DEVICE_IP:3001/recognition
+Links:             http://DEVICE_IP:3001/links
+Health:            http://DEVICE_IP:3001/health
+Hand state:        http://DEVICE_IP:3001/hand-state
+Recognition state: http://DEVICE_IP:3001/recognition-state
+Training samples:  http://DEVICE_IP:3001/training-samples
+Virtual skeleton:  http://DEVICE_IP:3001/virtual-skeleton
 ```
 
-휴대폰 QR을 쓰려면 `/links`를 `localhost`가 아니라 같은 네트워크의 노트북 IP로 열어야 한다.
+휴대폰 QR을 쓰려면 `/links`를 `127.0.0.1`이나 `localhost`가 아니라 같은 네트워크의 테스트 노트북/디바이스 IP로 열어야 한다. Mac에서는 보통 다음으로 IP를 확인한다.
+
+```sh
+ipconfig getifaddr en0
+```
+
+예:
 
 ```txt
-http://노트북_IP:3001/links
+http://192.168.0.129:3001/links
 ```
+
+실수로 `127.0.0.1:3001/links`를 열어도 `/links` 화면의 QR은 서버가 찾은 LAN IP를 우선 사용해 생성한다.
 
 ## 데이터 흐름
 

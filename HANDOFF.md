@@ -32,15 +32,15 @@ npm start
 발표용 화면:
 
 ```txt
-로봇손 전시 화면: http://127.0.0.1:3001/display
-자모 추정 화면:   http://127.0.0.1:3001/recognition
-QR 링크 화면:     http://127.0.0.1:3001/links
+로봇손 전시 화면: http://DEVICE_IP:3001/display
+자모 추정 화면:   http://DEVICE_IP:3001/recognition
+QR 링크 화면:     http://DEVICE_IP:3001/links
 ```
 
-휴대폰으로 직접 조종하려면 `/links`를 `127.0.0.1`이 아니라 같은 네트워크의 노트북 IP로 열어야 한다.
+휴대폰으로 직접 조종하려면 `/links`를 `127.0.0.1`이 아니라 같은 네트워크의 테스트 노트북/디바이스 IP로 열어야 한다. QR도 이 IP 기준으로 생성되어야 한다.
 
 ```txt
-http://노트북_IP:3001/links
+http://DEVICE_IP:3001/links
 ```
 
 ## 3. 5비트 자모 인식 규칙

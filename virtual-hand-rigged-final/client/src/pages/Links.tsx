@@ -1,4 +1,5 @@
 import { QRCodeSVG } from 'qrcode.react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FINGER_LABELS, FINGER_ORDER } from '../socket/types';
 
@@ -11,15 +12,51 @@ function getBaseUrl(): string
   return window.location.origin;
 }
 
-function getLanLinksExample(): string
+function isLocalhostAddress(hostname: string): boolean
 {
-  return `${window.location.protocol}//노트북_IP:${window.location.port || '3001'}/links`;
+  return hostname === 'localhost' || hostname === '127.0.0.1';
 }
 
 export default function Links({ serverOnline }: LinksProps)
 {
-  const baseUrl = getBaseUrl();
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const currentBaseUrl = getBaseUrl();
+  const [controllerBaseUrl, setControllerBaseUrl] = useState(currentBaseUrl);
+  const isLocalhost = isLocalhostAddress(window.location.hostname);
+
+  useEffect(() =>
+  {
+    let ignore = false;
+
+    async function loadNetworkInfo(): Promise<void>
+    {
+      try
+      {
+        const response = await fetch('/network-info');
+        const networkInfo = await response.json() as { preferredOrigin?: string | null };
+
+        if (!ignore && networkInfo.preferredOrigin && isLocalhost)
+        {
+          setControllerBaseUrl(networkInfo.preferredOrigin);
+        }
+      }
+      catch
+      {
+        if (!ignore)
+        {
+          setControllerBaseUrl(currentBaseUrl);
+        }
+      }
+    }
+
+    loadNetworkInfo();
+
+    return () =>
+    {
+      ignore = true;
+    };
+  }, [currentBaseUrl, isLocalhost]);
+
+  const linksUrl = `${controllerBaseUrl}/links`;
 
   return (
     <main className="links-screen">
@@ -38,8 +75,15 @@ export default function Links({ serverOnline }: LinksProps)
 
         {isLocalhost && (
           <section className="network-warning glass-card">
-            현재 <strong>localhost</strong>로 열려 있다. 휴대폰 QR 접속을 하려면 노트북 IP로 다시 열어야 한다.
-            <code>{getLanLinksExample()}</code>
+            현재 창은 <strong>localhost</strong>로 열려 있다. QR은 휴대폰 접속을 위해 노트북 IP 주소로 생성된다.
+            <code>{linksUrl}</code>
+          </section>
+        )}
+
+        {!isLocalhost && (
+          <section className="network-warning is-ready glass-card">
+            QR 접속 주소
+            <code>{linksUrl}</code>
           </section>
         )}
 
@@ -50,7 +94,7 @@ export default function Links({ serverOnline }: LinksProps)
 
         <section className="links-grid">
           {FINGER_ORDER.map((finger) => {
-            const url = `${baseUrl}/control/${finger}`;
+            const url = `${controllerBaseUrl}/control/${finger}`;
 
             return (
               <article key={finger} className="link-card glass-card">

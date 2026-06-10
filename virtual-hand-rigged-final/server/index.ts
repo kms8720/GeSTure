@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -91,6 +92,25 @@ function getConnectedControllerCount(): number
   return FINGERS.reduce((total, finger) => total + controllerSockets[finger].size, 0);
 }
 
+function getLanAddresses(): string[]
+{
+  const interfaces = os.networkInterfaces();
+  const addresses: string[] = [];
+
+  Object.values(interfaces).forEach((entries) =>
+  {
+    entries?.forEach((entry) =>
+    {
+      if (entry.family === 'IPv4' && !entry.internal)
+      {
+        addresses.push(entry.address);
+      }
+    });
+  });
+
+  return addresses;
+}
+
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -105,6 +125,17 @@ app.use(express.json());
 app.get('/health', (_request, response) =>
 {
   response.json({ ok: true });
+});
+
+app.get('/network-info', (request, response) =>
+{
+  const addresses = getLanAddresses();
+  response.json({
+    ok: true,
+    port: PORT,
+    addresses,
+    preferredOrigin: addresses.length > 0 ? `${request.protocol}://${addresses[0]}:${PORT}` : null
+  });
 });
 
 app.get('/hand-state', (_request, response) =>
