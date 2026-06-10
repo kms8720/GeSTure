@@ -91,7 +91,7 @@ http://노트북_IP:3001/links
   -> server latestVirtualSkeleton update
 ```
 
-자모가 이전 자모와 다를 때만 자동으로 buffer에 추가된다. buffer가 6개가 되면 서버가 Hangul compose를 시도하고, 로컬 전시용 vocabulary에서 가장 가까운 의미 있는 단어를 고른 뒤 buffer를 비운다. 최신 보정 단어는 `/display`의 `AUTO WORD` 카드에 표시된다.
+자모가 이전 자모와 다를 때만 자동으로 buffer에 추가된다. 같은 자모를 다시 입력해야 하면 모든 손가락을 편 `11111` rest pose를 한 번 거치면 된다. buffer가 6개가 되면 서버가 Hangul compose를 시도한 뒤, Ollama LLM에 `rawJamo`와 `composedText`를 보내 1~4글자의 의미 있는 한국어 단어로 보정한다. 이때 LLM은 자모 순서 변경, 일부 삭제, 중복 병합을 허용한다. 최신 보정 단어는 `/display`의 `AUTO WORD` 카드에 표시된다.
 
 ## 검증 예시
 
@@ -106,6 +106,14 @@ correctedWord: 강산
 finalized: true
 ```
 
+자모 순서 재배열/중복 처리 테스트도 통과했다.
+
+```txt
+rawJamo: ㅏㅐㅂㅂㅏㅇ
+composedText: ㅏㅐㅂ방
+correctedWord: 방법
+```
+
 중복 방지 테스트도 통과했다.
 
 ```txt
@@ -113,6 +121,11 @@ finalized: true
 ㄱ 상태 다시 입력
 ㄴ 상태 입력
 결과 buffer: ㄱㄴ
+
+ㅂ 상태 입력
+rest 상태 입력
+ㅂ 상태 입력
+결과 buffer: ㅂㅂ
 ```
 
 ## Virtual skeleton 경로
@@ -203,6 +216,6 @@ pinky_tip_pivot
 ## 다음 개선 후보
 
 1. 5비트 mapping을 전시에서 읽기 쉬운 순서로 조정할지 최종 결정.
-2. local vocabulary를 발표 문맥에 맞는 단어로 확장.
+2. Ollama LLM 보정 지연과 실패 fallback을 발표 장비에서 재검증.
 3. 여러 관객이 동시에 slider를 움직일 때 생기는 transient bit 변화를 smoothing.
 4. virtual skeleton 좌표 자체를 이용한 confidence/rule을 추가.

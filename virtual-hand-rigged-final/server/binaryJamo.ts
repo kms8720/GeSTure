@@ -28,6 +28,8 @@ export type WordCorrection = {
   correctedWord: string;
   candidates: string[];
   note: string;
+  model: string;
+  status: 'ok' | 'unavailable' | 'error';
 };
 
 export const BINARY_JAMO_LABELS = [
@@ -78,23 +80,10 @@ const CHOSEONG_INDEX = new Map(CHOSEONG.map((jamo, index) => [jamo, index]));
 const JUNGSEONG_INDEX = new Map(JUNGSEONG.map((jamo, index) => [jamo, index]));
 const JONGSEONG_INDEX = new Map(JONGSEONG.map((jamo, index) => [jamo, index]));
 
-const WORD_CANDIDATES = [
-  '강산',
-  '감사',
-  '기억',
-  '마음',
-  '미래',
-  '바다',
-  '사랑',
-  '안녕',
-  '언어',
-  '우리',
-  '전시',
-  '평화',
-  '하늘',
-  '함께',
-  '희망'
-];
+const DEFAULT_OLLAMA_URL = process.env.OLLAMA_URL ?? 'http://127.0.0.1:11434';
+const DEFAULT_OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'qwen2.5:7b-instruct';
+const DEFAULT_FALLBACK_WORD = '안녕';
+const KOREAN_WORD_PATTERN = /^[가-힣]{1,4}$/;
 
 export function createInitialHandState(): HandState
 {
@@ -154,38 +143,16 @@ export function predictJamo(handState: HandState, samples: BinaryJamoSample[]): 
   };
 }
 
-export function correctWord(tokens: string[]): WordCorrection
+export async function correctWord(tokens: string[]): Promise<WordCorrection>
 {
   const rawJamo = tokens.join('');
   const composedText = composeJamo(tokens);
-  const exact = WORD_CANDIDATES.find((candidate) => candidate === composedText);
-
-  if (exact)
-  {
-    return {
-      rawJamo,
-      composedText,
-      correctedWord: exact,
-      candidates: [exact],
-      note: 'composed text matched the exhibition vocabulary'
-    };
-  }
-
-  const ranked = WORD_CANDIDATES
-    .map((candidate) => ({
-      candidate,
-      score: levenshtein(composedText || rawJamo, candidate)
-    }))
-    .sort((left, right) => left.score - right.score)
-    .slice(0, 3)
-    .map((entry) => entry.candidate);
+  const correction = await correctWordWithOllama(rawJamo, composedText);
 
   return {
     rawJamo,
     composedText,
-    correctedWord: ranked[0] ?? '안녕',
-    candidates: ranked.length > 0 ? ranked : ['안녕'],
-    note: 'selected nearest meaningful word from local exhibition vocabulary'
+    ...correction
   };
 }
 
@@ -277,36 +244,221 @@ function composeSyllable(choseong: string, jungseong: string, jongseong: string)
   return String.fromCharCode(0xac00 + ((choseongIndex * 21) + jungseongIndex) * 28 + jongseongIndex);
 }
 
-function levenshtein(left: string, right: string): number
+type OllamaCorrectionPayload = Omit<WordCorrection, 'rawJamo' | 'composedText'>;
+
+async function correctWordWithOllama(rawJamo: string, composedText: string): Promise<OllamaCorrectionPayload>
 {
-  const rows = left.length + 1;
-  const columns = right.length + 1;
-  const matrix = Array.from({ length: rows }, () => Array<number>(columns).fill(0));
-
-  for (let row = 0; row < rows; row += 1)
+  try
   {
-    matrix[row][0] = row;
+    const first = await requestOllamaCorrection(buildCorrectionPrompt(rawJamo, composedText));
+    const validated = validateCorrection(first);
+    const checked = await requestOllamaCorrection(buildSemanticCheckPrompt(rawJamo, composedText, validated));
+    const finalCorrection = validateCorrection(checked);
+
+    return {
+      ...finalCorrection,
+      model: DEFAULT_OLLAMA_MODEL,
+      status: 'ok'
+    };
   }
-
-  for (let column = 0; column < columns; column += 1)
+  catch (firstError)
   {
-    matrix[0][column] = column;
-  }
-
-  for (let row = 1; row < rows; row += 1)
-  {
-    for (let column = 1; column < columns; column += 1)
+    try
     {
-      const cost = left[row - 1] === right[column - 1] ? 0 : 1;
-      matrix[row][column] = Math.min(
-        matrix[row - 1][column] + 1,
-        matrix[row][column - 1] + 1,
-        matrix[row - 1][column - 1] + cost
-      );
+      const repaired = await requestOllamaCorrection(buildRepairPrompt(rawJamo, composedText, String(firstError)));
+      const finalCorrection = validateCorrection(repaired);
+
+      return {
+        ...finalCorrection,
+        note: `repaired after invalid response: ${finalCorrection.note}`,
+        model: DEFAULT_OLLAMA_MODEL,
+        status: 'ok'
+      };
+    }
+    catch (secondError)
+    {
+      const unavailable = firstError instanceof TypeError || String(firstError).includes('ECONNREFUSED');
+      return {
+        correctedWord: DEFAULT_FALLBACK_WORD,
+        candidates: [DEFAULT_FALLBACK_WORD],
+        note: `Ollama correction failed: ${firstError}; retry failed: ${secondError}`,
+        model: DEFAULT_OLLAMA_MODEL,
+        status: unavailable ? 'unavailable' : 'error'
+      };
     }
   }
+}
 
-  return matrix[rows - 1][columns - 1];
+async function requestOllamaCorrection(prompt: string): Promise<unknown>
+{
+  const response = await fetch(`${DEFAULT_OLLAMA_URL.replace(/\/$/, '')}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: DEFAULT_OLLAMA_MODEL,
+      stream: false,
+      format: 'json',
+      options: { temperature: 0 },
+      messages: [
+        {
+          role: 'system',
+          content: [
+            'You convert noisy Korean jamo recognition into one meaningful Korean word.',
+            'You may reorder jamo, drop extra jamo, merge duplicate jamo, and infer missing jamo.',
+            'The final correctedWord must be exactly one real Korean word between 1 and 4 Hangul syllables.',
+            'Return only valid JSON.'
+          ].join(' ')
+        },
+        { role: 'user', content: prompt }
+      ]
+    })
+  });
+
+  if (!response.ok)
+  {
+    throw new Error(`Ollama HTTP ${response.status}`);
+  }
+
+  const data = await response.json() as { message?: { content?: unknown } };
+  return parseJsonObject(String(data.message?.content ?? ''));
+}
+
+function buildCorrectionPrompt(rawJamo: string, composedText: string): string
+{
+  return `다음은 전시용 로봇손 5비트 자모 인식 결과입니다.
+
+목표:
+- rawJamo에 들어온 자모들을 재료로 보고, 가장 그럴듯한 1~4글자의 의미 있는 한국어 단어 하나를 고르세요.
+- 입력 순서는 참고만 하세요. 필요하면 자모 순서를 바꾸거나, 일부 자모를 버리거나, 중복 자모를 합치거나, 빠진 자모를 조금 보완해도 됩니다.
+- 단, 입력에 포함된 자모를 최대한 많이 설명할 수 있는 단어를 우선하세요.
+- correctedWord는 반드시 완성형 한글 음절만 포함해야 합니다.
+- 공백, 문장, 영어, 숫자, 낱자 자모, 한자, 일본어는 금지입니다.
+- 입력 조각을 억지로 붙인 새 단어가 아니라 한국어 화자가 실제로 쓰는 단어여야 합니다.
+- 좋은 예: rawJamo "ㅏㅐㅂㅂㅏㅇ"은 "방법" 또는 "방방"처럼 재배열해서 해석할 수 있습니다.
+- 좋은 예: rawJamo "ㅅㅏㄹㅏㅇㅇ"은 "사랑"으로 해석할 수 있습니다.
+- 좋은 예: rawJamo "ㅍㅕㅇㅎㅘㄱ"은 "평화"로 해석할 수 있습니다.
+
+입력:
+- rawJamo: ${rawJamo}
+- composedText: ${composedText}
+
+출력 JSON 형식:
+{
+  "correctedWord": "단어",
+  "candidates": ["후보1", "후보2", "후보3"],
+  "note": "짧은 근거"
+}`;
+}
+
+function buildSemanticCheckPrompt(rawJamo: string, composedText: string, correction: ValidatedCorrection): string
+{
+  return `다음 보정 결과를 검수하세요.
+
+검수 기준:
+- correctedWord는 1~4글자의 실제 한국어 단어여야 합니다.
+- rawJamo의 순서는 바꿔도 되지만, 입력된 자모들과 형태/발음상 관련이 있어야 합니다.
+- 의미가 불분명한 조합어, 영어, 낱자 자모, 문장, 공백 포함 결과는 실패입니다.
+- 실패라면 같은 rawJamo를 재배열/부분 사용해서 더 자연스러운 실제 한국어 단어로 교체하세요.
+- JSON만 출력하세요.
+
+입력:
+- rawJamo: ${rawJamo}
+- composedText: ${composedText}
+- correctedWord: ${correction.correctedWord}
+- candidates: ${correction.candidates.join(', ')}
+
+출력 JSON 형식:
+{
+  "correctedWord": "단어",
+  "candidates": ["후보1", "후보2", "후보3"],
+  "note": "검수 결과"
+}`;
+}
+
+function buildRepairPrompt(rawJamo: string, composedText: string, reason: string): string
+{
+  return `이전 응답이 규칙을 어겼습니다.
+
+실패 이유:
+${reason}
+
+다시 출력하세요.
+- correctedWord는 1~4글자의 실제 한국어 단어 하나입니다.
+- rawJamo 순서 변경, 일부 삭제, 중복 병합을 허용합니다.
+- 완성형 한글 음절만 허용합니다.
+- JSON만 출력하세요.
+
+입력:
+- rawJamo: ${rawJamo}
+- composedText: ${composedText}
+
+출력 JSON 형식:
+{
+  "correctedWord": "단어",
+  "candidates": ["후보1", "후보2", "후보3"],
+  "note": "짧은 근거"
+}`;
+}
+
+type ValidatedCorrection = {
+  correctedWord: string;
+  candidates: string[];
+  note: string;
+};
+
+function validateCorrection(value: unknown): ValidatedCorrection
+{
+  if (typeof value !== 'object' || value === null)
+  {
+    throw new Error('LLM response must be an object');
+  }
+
+  const candidate = value as Partial<ValidatedCorrection>;
+  const correctedWord = String(candidate.correctedWord ?? '').trim();
+  const rawCandidates = Array.isArray(candidate.candidates) ? candidate.candidates : [correctedWord];
+  const candidates = rawCandidates
+    .map((entry) => String(entry).trim())
+    .filter(isValidKoreanWord);
+
+  if (!isValidKoreanWord(correctedWord))
+  {
+    const firstCandidate = candidates[0];
+    if (firstCandidate === undefined)
+    {
+      throw new Error(`correctedWord is not a 1-4 syllable Korean word: ${correctedWord}`);
+    }
+
+    return {
+      correctedWord: firstCandidate,
+      candidates: [firstCandidate],
+      note: String(candidate.note ?? '')
+    };
+  }
+
+  return {
+    correctedWord,
+    candidates: [correctedWord],
+    note: String(candidate.note ?? '')
+  };
+}
+
+function parseJsonObject(text: string): unknown
+{
+  const trimmed = text.trim();
+  const start = trimmed.indexOf('{');
+  const end = trimmed.lastIndexOf('}');
+
+  if (start === -1 || end === -1 || end < start)
+  {
+    throw new Error('JSON object not found');
+  }
+
+  return JSON.parse(trimmed.slice(start, end + 1));
+}
+
+function isValidKoreanWord(value: string): boolean
+{
+  return KOREAN_WORD_PATTERN.test(value.trim());
 }
 
 function seededRandom(seed: number): () => number

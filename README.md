@@ -16,7 +16,7 @@ ACCxGMAP 전시 mock-up 단계의 로봇손/지화 알고리즘 프로젝트다.
   -> 가상 로봇손 handState
   -> 5비트 자모 인식
   -> 자모 자동 누적
-  -> 6개 자모 단위 단어 보정
+  -> 6개 자모 단위 Ollama LLM 단어 보정
   -> /display와 /recognition에 표시
 ```
 
@@ -83,7 +83,9 @@ classification threshold: 50
 ```txt
 추정 자모가 바뀌면 buffer에 자동 추가
 같은 자모가 연속으로 들어오면 중복 추가하지 않음
-buffer가 6개가 되면 Hangul compose + local vocabulary correction
+rest pose를 거치면 같은 자모도 다시 입력 가능
+buffer가 6개가 되면 Hangul compose + Ollama LLM correction
+LLM은 자모 순서 변경, 일부 삭제, 중복 병합을 허용해서 1~4글자 한국어 단어로 보정
 최종 단어는 /display의 AUTO WORD 카드에 표시
 ```
 
@@ -93,7 +95,11 @@ buffer가 6개가 되면 Hangul compose + local vocabulary correction
 입력: ㄱㅏㅇㅅㅏㄴ
 compose: 강산
 correctedWord: 강산
+입력: ㅏㅐㅂㅂㅏㅇ
+compose: ㅏㅐㅂ방
+correctedWord: 방법
 중복 테스트: ㄱ, ㄱ, ㄴ -> buffer ㄱㄴ
+rest 구분자 테스트: ㅂ, rest, ㅂ -> buffer ㅂㅂ
 ```
 
 자세한 웹 구조와 Blender pivot 정보는 `virtual-hand-rigged-final/README.md`를 본다.
@@ -155,7 +161,7 @@ src/gesture_pipeline/
   cli.py               acc-gesture command entrypoint
 
 virtual-hand-rigged-final/
-  server/binaryJamo.ts 5비트 자모 mapping/sample/correction
+  server/binaryJamo.ts 5비트 자모 mapping/sample/Ollama correction
   server/index.ts      Express + Socket.IO API
   client/src/pages/    display, recognition, links, controller
   client/src/components/VirtualHand.tsx
@@ -179,6 +185,7 @@ npm run build
 Invoke-RestMethod -Uri 'http://127.0.0.1:3001/health'
 Invoke-RestMethod -Uri 'http://127.0.0.1:3001/training-samples'
 Invoke-RestMethod -Uri 'http://127.0.0.1:3001/recognition-state'
+Invoke-RestMethod -Uri 'http://127.0.0.1:3001/word-correction' -Method POST -ContentType 'application/json' -Body '{"rawJamo":"ㅏㅐㅂㅂㅏㅇ"}'
 ```
 
 ## Coordination
@@ -191,7 +198,7 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:3001/recognition-state'
 
 ## 다음 작업
 
-1. 발표 문맥에 맞춰 local correction vocabulary를 확장한다.
+1. 발표 장비에서 Ollama 모델과 LLM 응답 지연을 재검증한다.
 2. 여러 관객이 동시에 움직일 때 transient bit가 너무 많이 들어오면 300~500ms smoothing을 추가한다.
 3. 필요하면 31개 자모 mapping 순서를 실제 발표 시나리오에 맞게 재배열한다.
 4. virtual skeleton confidence를 5비트 인식 UI에 더 적극적으로 반영한다.

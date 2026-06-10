@@ -111,7 +111,7 @@ app.get('/hand-state', (_request, response) =>
   response.json(handState);
 });
 
-app.post('/hand-state', (request, response) =>
+app.post('/hand-state', async (request, response) =>
 {
   const payload = request.body as Partial<HandState>;
   FINGERS.forEach((finger) =>
@@ -122,7 +122,7 @@ app.post('/hand-state', (request, response) =>
     }
   });
 
-  updateRecognitionState();
+  await updateRecognitionState();
   io.emit('hand:state', handState);
   io.emit('recognition:state', recognitionState);
   response.json({ ok: true, handState, recognitionState });
@@ -149,6 +149,23 @@ app.post('/recognition/reset', (_request, response) =>
   resetRecognitionState();
   io.emit('recognition:state', recognitionState);
   response.json({ ok: true, recognitionState });
+});
+
+app.post('/word-correction', async (request, response) =>
+{
+  const payload = request.body as { tokens?: unknown; rawJamo?: unknown };
+  const tokens = Array.isArray(payload.tokens)
+    ? payload.tokens.map((token) => String(token))
+    : String(payload.rawJamo ?? '').split('');
+
+  if (tokens.length === 0)
+  {
+    response.status(400).json({ ok: false, error: 'tokens or rawJamo is required' });
+    return;
+  }
+
+  const correction = await correctWord(tokens);
+  response.json({ ok: true, correction });
 });
 
 app.get('/training-samples', (_request, response) =>
@@ -184,7 +201,7 @@ io.on('connection', (socket) =>
     socket.emit('hand:state', handState);
   });
 
-  socket.on('finger:update', (payload: { finger?: unknown; value?: unknown }) =>
+  socket.on('finger:update', async (payload: { finger?: unknown; value?: unknown }) =>
   {
     if (!isFinger(payload?.finger))
     {
@@ -192,7 +209,7 @@ io.on('connection', (socket) =>
     }
 
     handState[payload.finger] = clampFingerValue(payload.value);
-    updateRecognitionState();
+    await updateRecognitionState();
     io.emit('hand:state', handState);
     io.emit('recognition:state', recognitionState);
   });
@@ -240,7 +257,7 @@ function createRecognitionState(): RecognitionState
   };
 }
 
-function updateRecognitionState(): void
+async function updateRecognitionState(): Promise<void>
 {
   const current = predictJamo(handState, trainingSamples);
   recognitionState.current = current;
@@ -249,6 +266,7 @@ function updateRecognitionState(): void
 
   if (current.status === 'rest' || current.jamo === null)
   {
+    lastAppendedJamo = null;
     recognitionState.note = 'all five fingers are open; rest pose is not assigned to a jamo';
     return;
   }
@@ -261,7 +279,14 @@ function updateRecognitionState(): void
 
   if (recognitionState.tokens.length >= 6)
   {
-    const correction = correctWord(recognitionState.tokens.slice(0, 6));
+    const tokensToCorrect = recognitionState.tokens.slice(0, 6);
+    recognitionState.rawJamo = tokensToCorrect.join('');
+    recognitionState.composedText = '';
+    recognitionState.candidates = [];
+    recognitionState.note = 'correcting 6 jamo with local Ollama LLM';
+    io.emit('recognition:state', recognitionState);
+
+    const correction = await correctWord(tokensToCorrect);
     recognitionState.rawJamo = correction.rawJamo;
     recognitionState.composedText = correction.composedText;
     recognitionState.correctedWord = correction.correctedWord;
