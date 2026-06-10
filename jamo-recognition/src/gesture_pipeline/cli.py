@@ -24,6 +24,8 @@ from gesture_pipeline.virtual_skeleton import (
     check_virtual_skeleton,
 )
 
+DEFAULT_REFERENCE_PATH = Path("jamo-recognition/data/reference_samples.jsonl")
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the ACC GeSTure recognition pipeline.")
@@ -46,13 +48,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     recognize_parser = subparsers.add_parser("recognize", help="Show live recognition labels on the camera feed.")
     recognize_parser.add_argument("--camera", type=int, default=0, help="Camera index.")
-    recognize_parser.add_argument("--references", type=Path, default=Path("data/reference_samples.jsonl"))
+    recognize_parser.add_argument("--references", type=Path, default=DEFAULT_REFERENCE_PATH)
     recognize_parser.add_argument("--neighbors", type=int, default=3, help="Reference samples to average per label.")
     recognize_parser.add_argument("--duration", type=float, default=0.0, help="Seconds to run; 0 means until space.")
 
     compose_parser = subparsers.add_parser("compose", help="Build Hangul text from live jamo predictions.")
     compose_parser.add_argument("--camera", type=int, default=0, help="Camera index.")
-    compose_parser.add_argument("--references", type=Path, default=Path("data/reference_samples.jsonl"))
+    compose_parser.add_argument("--references", type=Path, default=DEFAULT_REFERENCE_PATH)
     compose_parser.add_argument("--neighbors", type=int, default=3, help="Reference samples to average per label.")
     compose_parser.add_argument("--duration", type=float, default=0.0, help="Seconds to run; 0 means until space.")
     compose_parser.add_argument("--output", type=Path, default=Path("data/compose_session.jsonl"))
@@ -65,7 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
     capture_parser.add_argument("--camera", type=int, default=0, help="Camera index.")
     capture_parser.add_argument("--samples", type=int, default=20, help="Number of detected-hand samples to save.")
     capture_parser.add_argument("--interval", type=float, default=0.25, help="Seconds between saved samples.")
-    capture_parser.add_argument("--output", type=Path, default=Path("data/reference_samples.jsonl"))
+    capture_parser.add_argument("--output", type=Path, default=DEFAULT_REFERENCE_PATH)
     capture_parser.add_argument("--no-preview", action="store_true", help="Disable live skeleton preview.")
 
     screen_parser = subparsers.add_parser(
@@ -81,7 +83,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Read GLB-derived virtual skeleton landmarks from the virtual hand server.",
     )
     virtual_check_parser.add_argument("--url", default=DEFAULT_VIRTUAL_SKELETON_URL)
-    virtual_check_parser.add_argument("--references", type=Path, default=Path("data/reference_samples.jsonl"))
+    virtual_check_parser.add_argument("--references", type=Path, default=DEFAULT_REFERENCE_PATH)
     virtual_check_parser.add_argument("--neighbors", type=int, default=3, help="Reference samples to average per label.")
     virtual_check_parser.add_argument("--no-recognizer", action="store_true", help="Only validate skeleton input.")
 
@@ -104,7 +106,7 @@ def add_run_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--interval", type=float, default=1.0, help="Seconds between captures.")
     parser.add_argument("--output", type=Path, default=Path("data/session.jsonl"))
     parser.add_argument("--no-preview", action="store_true", help="Disable camera preview window.")
-    parser.add_argument("--references", type=Path, default=Path("data/reference_samples.jsonl"))
+    parser.add_argument("--references", type=Path, default=DEFAULT_REFERENCE_PATH)
     parser.add_argument("--neighbors", type=int, default=3, help="Reference samples to average per label.")
 
 

@@ -25,17 +25,22 @@ GeSTure/
 │   └── 프로젝트 전체 지도, 폴더 역할, 구현/미구현 상태
 ├── HANDOFF.md
 │   └── 최신 진행상황, 검증 결과, 다음 작업 인수인계
-├── pyproject.toml
-│   └── Python 패키지/CLI 설정
-├── src/
-│   └── gesture_pipeline/
-│       ├── cli.py
-│       ├── skeleton.py
-│       ├── recognizer.py
-│       ├── hangul.py
-│       ├── llm.py
-│       ├── screen_check.py
-│       └── virtual_skeleton.py
+├── jamo-recognition/
+│   ├── README.md
+│   ├── pyproject.toml
+│   ├── src/
+│   │   └── gesture_pipeline/
+│   │       ├── cli.py
+│   │       ├── skeleton.py
+│   │       ├── recognizer.py
+│   │       ├── hangul.py
+│   │       ├── llm.py
+│   │       ├── screen_check.py
+│   │       └── virtual_skeleton.py
+│   ├── data/
+│   │   └── reference_samples.jsonl
+│   └── docs/
+│       └── algorithm_plan.md
 ├── virtual-hand-rigged-final/
 │   ├── README.md
 │   ├── server/
@@ -50,21 +55,19 @@ GeSTure/
 │   └── scripts/
 ├── motor-control/
 │   └── README.md
-├── docs/
-│   └── algorithm_plan.md
 └── data/
-    └── local-only samples, captures, JSONL logs
+    └── local-only captures, JSONL logs, test outputs
 ```
 
 ### 영역별 역할
 
 | 영역 | 현재 폴더 | 역할 |
 | --- | --- | --- |
-| 자모음 알고리즘 | `src/gesture_pipeline/` | Python 기반 카메라/MediaPipe/skeleton 추출, reference sample, 자모 인식, 한글 compose, Python Ollama 보정 실험 |
+| 자모음 알고리즘 | `jamo-recognition/` | Python 기반 카메라/MediaPipe/skeleton 추출, reference sample, 자모 인식, 한글 compose, Python Ollama 보정 실험 |
 | 발표용 웹앱 | `virtual-hand-rigged-final/` | 가상 로봇손, 관객 controller, 5비트 자모 인식, 자동 자모 누적, Ollama 단어 보정, display/recognition 화면 |
 | 실제 모터 제어 | `motor-control/` | 실제 전시용 로봇손 모터/servo/actuator 제어 코드가 들어갈 예정 영역 |
-| 문서/인수인계 | `README.md`, `HANDOFF.md`, `docs/` | 전체 맥락, 진행 기록, 설계 메모 |
-| 로컬 데이터 | `data/` | reference sample, frame capture, JSONL session log 등 로컬 산출물 |
+| 문서/인수인계 | `README.md`, `HANDOFF.md`, 각 영역별 `README.md` | 전체 맥락, 진행 기록, 영역별 세부 운영법 |
+| 로컬 데이터 | `data/` | frame capture, JSONL session log 등 로컬 산출물 |
 
 ## 구현된 부분
 
@@ -81,16 +84,24 @@ GeSTure/
 - virtual screen capture MediaPipe check
 - 웹앱 `/virtual-skeleton` fetch/check/capture
 
+설치:
+
+```sh
+.venv/bin/pip install -e jamo-recognition
+```
+
 주요 명령:
 
 ```sh
-acc-gesture check --no-camera
-acc-gesture preview --camera 0
-acc-gesture recognize --camera 0 --references data/reference_samples.jsonl
-acc-gesture compose --camera 0 --references data/reference_samples.jsonl --output data/compose_session.jsonl
-acc-gesture screen-check --image data/virtual_hand_open_zoomout.png --save-overlay data/virtual_hand_open_zoomout_overlay.png
-acc-gesture virtual-check --url http://127.0.0.1:3001/virtual-skeleton --no-recognizer
+.venv/bin/acc-gesture check --no-camera
+.venv/bin/acc-gesture preview --camera 0
+.venv/bin/acc-gesture recognize --camera 0 --references jamo-recognition/data/reference_samples.jsonl
+.venv/bin/acc-gesture compose --camera 0 --references jamo-recognition/data/reference_samples.jsonl --output data/compose_session.jsonl
+.venv/bin/acc-gesture screen-check --image data/virtual_hand_open_zoomout.png --save-overlay data/virtual_hand_open_zoomout_overlay.png
+.venv/bin/acc-gesture virtual-check --url http://127.0.0.1:3001/virtual-skeleton --no-recognizer
 ```
+
+자모음 알고리즘 세부 내용은 `jamo-recognition/README.md`를 본다.
 
 ### 2. 발표용 웹앱
 
@@ -166,7 +177,8 @@ http://노트북_IP:3001/links
 Python:
 
 ```sh
-.venv/bin/python -m compileall src
+.venv/bin/python -m compileall jamo-recognition/src
+.venv/bin/acc-gesture --help
 ```
 
 웹앱:
@@ -192,13 +204,14 @@ curl -X POST http://127.0.0.1:3001/word-correction \
 
 1. `README.md`: 전체 프로젝트 지도
 2. `HANDOFF.md`: 최신 진행상황과 다음 액션
-3. `virtual-hand-rigged-final/README.md`: 발표용 웹앱 상세 운영법
-4. `motor-control/README.md`: 실제 모터 제어 영역 계획
-5. `docs/algorithm_plan.md`: 알고리즘 설계 메모
+3. `jamo-recognition/README.md`: Python 자모음 알고리즘 상세
+4. `virtual-hand-rigged-final/README.md`: 발표용 웹앱 상세 운영법
+5. `motor-control/README.md`: 실제 모터 제어 영역 계획
 
 ## Coordination
 
 - 작업 시작 전 `git pull --rebase origin main`
+- Python 환경 설치는 repo 루트에서 `.venv/bin/pip install -e jamo-recognition`
 - 변경 후 관련 검증 명령 실행
 - 문서와 코드 방향이 바뀌면 `HANDOFF.md`도 함께 업데이트
 - `node_modules/`, `dist/`, `.venv/`, `data/` 산출물은 커밋하지 않음
