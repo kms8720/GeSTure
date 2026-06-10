@@ -99,7 +99,7 @@ http://192.168.0.129:3001/links
   -> server latestVirtualSkeleton update
 ```
 
-자모가 이전 자모와 다를 때만 자동으로 buffer에 추가된다. 같은 자모를 다시 입력해야 하면 모든 손가락을 편 `11111` rest pose를 한 번 거치면 된다. buffer가 6개가 되면 서버가 Hangul compose를 시도한 뒤, Ollama LLM에 `rawJamo`와 `composedText`를 보내 1~4글자의 의미 있는 한국어 단어로 보정한다. 이때 LLM은 자모 순서 변경, 일부 삭제, 중복 병합을 허용한다. 최신 보정 단어는 `/display`의 `AUTO WORD` 카드에 표시된다.
+자모가 이전 자모와 다를 때만 자동으로 buffer에 추가된다. 또한 현재 6개 buffer 안에 이미 들어간 자모는 rest pose를 거쳐도 다시 추가하지 않는다. 즉, correction에 넘기는 6개 자모는 서로 중복되지 않는 것을 원칙으로 한다. buffer가 6개가 되면 서버가 Hangul compose를 시도한 뒤, Ollama LLM에 `rawJamo`와 `composedText`를 보내 1~4글자의 의미 있는 한국어 단어로 보정한다. 최신 보정 단어는 `/display`의 `AUTO WORD` 카드에 표시된다.
 
 ## 검증 예시
 
@@ -114,15 +114,15 @@ correctedWord: 강산
 finalized: true
 ```
 
-자모 순서 재배열/중복 처리 테스트도 통과했다.
+일상 단어 유도 테스트도 통과했다.
 
 ```txt
-rawJamo: ㅏㅐㅂㅂㅏㅇ
-composedText: ㅏㅐㅂ방
-correctedWord: 방법
+rawJamo: ㅂㅕㅇㅊㅓㄴ
+composedText: 병천
+correctedWord: 친구
 ```
 
-중복 방지 테스트도 통과했다.
+buffer 중복 방지 테스트도 통과했다.
 
 ```txt
 ㄱ 상태 입력
@@ -133,7 +133,7 @@ correctedWord: 방법
 ㅂ 상태 입력
 rest 상태 입력
 ㅂ 상태 입력
-결과 buffer: ㅂㅂ
+결과 buffer: ㅂ
 ```
 
 ## Virtual skeleton 경로

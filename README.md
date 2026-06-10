@@ -113,17 +113,16 @@ GeSTure/
 - 0~30은 `ㄱ`부터 `ㅢ`까지 31개 자모
 - 31, 즉 `11111`은 rest pose로 두고 자모 입력하지 않음
 - 자모가 바뀌면 자동 buffer 추가
-- rest pose를 거치면 같은 자모 재입력 가능
+- 현재 6개 buffer 안에 이미 들어간 자모는 다시 입력하지 않음
 - buffer 6개가 모이면 Ollama LLM으로 1~4글자 한국어 단어 보정
-- LLM은 자모 순서 변경, 일부 삭제, 중복 병합, 빠진 자모 보완을 허용
+- LLM은 자모 순서 변경, 일부 삭제, 빠진 자모 보완을 허용
 
 대표 검증:
 
 ```txt
 ㄱㅏㅇㅅㅏㄴ -> 강산
-ㅏㅐㅂㅂㅏㅇ -> 방법
-ㅍㅕㅇㅎㅘㄱ -> 평화
-ㅂ, rest, ㅂ -> buffer ㅂㅂ
+ㅂㅕㅇㅊㅓㄴ -> 친구
+ㅂ, rest, ㅂ -> buffer ㅂ
 ```
 
 실행:
@@ -203,7 +202,7 @@ curl http://127.0.0.1:3001/training-samples
 curl http://127.0.0.1:3001/recognition-state
 curl -X POST http://127.0.0.1:3001/word-correction \
   -H 'Content-Type: application/json' \
-  -d '{"rawJamo":"ㅏㅐㅂㅂㅏㅇ"}'
+  -d '{"rawJamo":"ㅂㅕㅇㅊㅓㄴ"}'
 ```
 
 ## 문서 읽는 순서

@@ -310,6 +310,16 @@ async function updateRecognitionState(): Promise<void>
     return;
   }
 
+  if (recognitionState.tokens.includes(current.jamo))
+  {
+    lastAppendedJamo = current.jamo;
+    recognitionState.rawJamo = recognitionState.tokens.join('');
+    recognitionState.composedText = '';
+    recognitionState.candidates = [];
+    recognitionState.note = `${current.jamo} is already in the 6-jamo buffer; duplicate ignored`;
+    return;
+  }
+
   if (current.jamo !== lastAppendedJamo)
   {
     recognitionState.tokens.push(current.jamo);

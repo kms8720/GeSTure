@@ -304,7 +304,8 @@ async function requestOllamaCorrection(prompt: string): Promise<unknown>
           role: 'system',
           content: [
             'You convert noisy Korean jamo recognition into one meaningful Korean word.',
-            'You may reorder jamo, drop extra jamo, merge duplicate jamo, and infer missing jamo.',
+            'The automatic input buffer is designed to contain six distinct jamo, with duplicates ignored before correction.',
+            'You may reorder jamo, drop extra jamo, and infer missing jamo.',
             'The final correctedWord must be exactly one common everyday Korean word between 1 and 4 Hangul syllables.',
             'Prefer words that most visitors immediately understand, such as emotions, objects, nature, relationships, and simple actions.',
             'Avoid proper nouns, place names, personal names, rare Sino-Korean words, technical terms, archaic words, and ambiguous obscure words.',
@@ -331,7 +332,8 @@ function buildCorrectionPrompt(rawJamo: string, composedText: string): string
 
 목표:
 - rawJamo에 들어온 자모들을 재료로 보고, 가장 그럴듯한 1~4글자의 쉽고 일상적인 한국어 단어 하나를 고르세요.
-- 입력 순서는 참고만 하세요. 필요하면 자모 순서를 바꾸거나, 일부 자모를 버리거나, 중복 자모를 합치거나, 빠진 자모를 조금 보완해도 됩니다.
+- 입력되는 6개 자모는 서로 중복되지 않는 것을 원칙으로 합니다.
+- 입력 순서는 참고만 하세요. 필요하면 자모 순서를 바꾸거나, 일부 자모를 버리거나, 빠진 자모를 조금 보완해도 됩니다.
 - 단, 입력에 포함된 자모를 최대한 많이 설명할 수 있는 단어를 우선하세요.
 - 전시 관객 대부분이 바로 이해할 수 있는 단어를 고르세요.
 - 감정, 사물, 자연, 관계, 몸, 간단한 행동에 가까운 단어를 우선하세요.
@@ -340,7 +342,7 @@ function buildCorrectionPrompt(rawJamo: string, composedText: string): string
 - correctedWord는 반드시 완성형 한글 음절만 포함해야 합니다.
 - 공백, 문장, 영어, 숫자, 낱자 자모, 한자, 일본어는 금지입니다.
 - 입력 조각을 억지로 붙인 새 단어가 아니라 한국어 화자가 실제로 쓰는 단어여야 합니다.
-- 좋은 예: rawJamo "ㅏㅐㅂㅂㅏㅇ"은 "방법" 또는 "방방"처럼 재배열해서 해석할 수 있습니다.
+- 좋은 예: rawJamo "ㅂㅕㅇㅊㅓㄴ"은 "친구"처럼 더 쉽고 일상적인 단어로 해석할 수 있습니다.
 - 좋은 예: rawJamo "ㅅㅏㄹㅏㅇㅇ"은 "사랑"으로 해석할 수 있습니다.
 - 좋은 예: rawJamo "ㅍㅕㅇㅎㅘㄱ"은 "평화"로 해석할 수 있습니다.
 
@@ -395,7 +397,7 @@ ${reason}
 - correctedWord는 1~4글자의 쉽고 일상적인 한국어 단어 하나입니다.
 - 감정, 사물, 자연, 관계, 몸, 간단한 행동 관련 단어를 우선하세요.
 - 지명, 인명, 고유명사, 전문용어, 옛말, 드문 한자어, 의미가 모호한 단어는 금지입니다.
-- rawJamo 순서 변경, 일부 삭제, 중복 병합을 허용합니다.
+- rawJamo 순서 변경, 일부 삭제, 빠진 자모 보완을 허용합니다.
 - 완성형 한글 음절만 허용합니다.
 - JSON만 출력하세요.
 

@@ -76,23 +76,23 @@ http://DEVICE_IP:3001/links
 
 ```txt
 추정 자모가 바뀌면 자동 추가
-같은 자모가 연속으로 유지되면 중복 추가하지 않음
+현재 6개 buffer 안에 이미 들어간 자모는 중복 추가하지 않음
 자모 buffer가 6개가 되면 자동으로 단어 보정
 최종 단어는 /display의 AUTO WORD 카드에 표시
 /recognition에는 현재 자모, bit, buffer, 보정 단어 표시
 ```
 
-단어 보정은 더 이상 local vocabulary 고정 후보를 고르지 않는다. 서버가 Ollama `/api/chat`을 호출하고, LLM은 입력 자모의 순서 변경, 일부 삭제, 중복 병합, 빠진 자모 보완을 허용해 1~4글자의 실제 한국어 단어 하나를 고른다. 최종 결과는 완성형 한글 1~4글자만 허용한다.
+단어 보정은 더 이상 local vocabulary 고정 후보를 고르지 않는다. 서버가 Ollama `/api/chat`을 호출하고, LLM은 입력 자모의 순서 변경, 일부 삭제, 빠진 자모 보완을 허용해 1~4글자의 실제 한국어 단어 하나를 고른다. 최종 결과는 완성형 한글 1~4글자만 허용한다.
 
-같은 자모가 연속으로 유지되면 중복 입력하지 않지만, 중간에 rest pose(`11111`)가 들어오면 같은 자모를 다시 입력할 수 있다.
+같은 자모는 rest pose(`11111`)를 거쳐도 현재 6개 buffer 안에서는 다시 입력하지 않는다. 즉, correction에 넘기는 6개 자모는 서로 중복되지 않는 것을 원칙으로 한다.
 
 검증된 테스트:
 
 ```txt
 ㄱㅏㅇㅅㅏㄴ -> compose 강산 -> correctedWord 강산
 ㄱ, ㄱ, ㄴ -> buffer ㄱㄴ
-ㅏㅐㅂㅂㅏㅇ -> compose ㅏㅐㅂ방 -> correctedWord 방법
-ㅂ, rest, ㅂ -> buffer ㅂㅂ
+ㅂㅕㅇㅊㅓㄴ -> compose 병천 -> correctedWord 친구
+ㅂ, rest, ㅂ -> buffer ㅂ
 ```
 
 ## 5. 구현된 주요 파일
@@ -160,8 +160,8 @@ API 테스트:
 ```txt
 /training-samples -> count 744
 /recognition-state -> correctedWord 강산 테스트 성공
-/word-correction rawJamo=ㅏㅐㅂㅂㅏㅇ -> correctedWord 방법 테스트 성공
-/hand-state ㅏ, ㅐ, ㅂ, rest, ㅂ, ㅏ, ㅇ -> correctedWord 방법 테스트 성공
+/word-correction rawJamo=ㅂㅕㅇㅊㅓㄴ -> correctedWord 친구 테스트 성공
+/hand-state ㅂ, rest, ㅂ -> buffer ㅂ 테스트 성공
 /display -> AUTO WORD 강산 표시 확인
 /recognition -> corrected word 강산 표시 확인
 ```
@@ -298,3 +298,17 @@ semantic check와 repair prompt에도 같은 기준 적용
 웹앱에서 다섯 번째 손가락 표시를 `새끼`에서 `소지`로 바꿨다. 전시 화면과 조종 화면에서 더 단정하고 공식적인 표현을 쓰기 위한 변경이다.
 
 또한 각 손가락 controller 화면 하단의 설명 문구를 제거했다. controller 화면은 손가락 이름, 현재 값, slider만 보이도록 단순화했다.
+
+## 16. 2026-06-10 자모 buffer 중복 입력 방지 강화
+
+기존에는 직전 자모와 같은 경우만 중복 입력을 막았다. 이 때문에 rest pose를 거치면 같은 자모가 현재 buffer에 다시 들어갈 수 있었다.
+
+새 정책:
+
+```txt
+현재 6개 buffer 안에 이미 들어간 자모는 다시 입력하지 않는다.
+rest pose를 거쳐도 같은 buffer 안에서는 동일 자모를 다시 추가하지 않는다.
+LLM correction에 넘기는 6개 자모는 서로 중복되지 않는 것을 원칙으로 한다.
+```
+
+중복 자모가 들어오면 `/recognition` note에 duplicate ignored 상태를 표시하고 buffer는 그대로 유지한다.
