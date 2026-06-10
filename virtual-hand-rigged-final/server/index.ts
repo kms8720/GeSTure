@@ -46,6 +46,7 @@ const trainingSamples = generateBinaryJamoSamples();
 const recognitionState: RecognitionState = createRecognitionState();
 
 let lastAppendedJamo: string | null = null;
+let correctionInFlight = false;
 
 const controllerSockets: Record<Finger, Set<string>> = {
   thumb: new Set(),
@@ -261,8 +262,15 @@ async function updateRecognitionState(): Promise<void>
 {
   const current = predictJamo(handState, trainingSamples);
   recognitionState.current = current;
-  recognitionState.finalized = false;
   recognitionState.updatedAt = new Date().toISOString();
+
+  if (correctionInFlight)
+  {
+    recognitionState.note = 'correcting 6 jamo with local Ollama LLM';
+    return;
+  }
+
+  recognitionState.finalized = false;
 
   if (current.status === 'rest' || current.jamo === null)
   {
@@ -280,21 +288,30 @@ async function updateRecognitionState(): Promise<void>
   if (recognitionState.tokens.length >= 6)
   {
     const tokensToCorrect = recognitionState.tokens.slice(0, 6);
+    recognitionState.tokens = recognitionState.tokens.slice(6);
+    correctionInFlight = true;
     recognitionState.rawJamo = tokensToCorrect.join('');
     recognitionState.composedText = '';
     recognitionState.candidates = [];
     recognitionState.note = 'correcting 6 jamo with local Ollama LLM';
     io.emit('recognition:state', recognitionState);
 
-    const correction = await correctWord(tokensToCorrect);
-    recognitionState.rawJamo = correction.rawJamo;
-    recognitionState.composedText = correction.composedText;
-    recognitionState.correctedWord = correction.correctedWord;
-    recognitionState.correctedWords.push(correction.correctedWord);
-    recognitionState.candidates = correction.candidates;
-    recognitionState.note = correction.note;
-    recognitionState.tokens = [];
-    recognitionState.finalized = true;
+    try
+    {
+      const correction = await correctWord(tokensToCorrect);
+      recognitionState.rawJamo = correction.rawJamo;
+      recognitionState.composedText = correction.composedText;
+      recognitionState.correctedWord = correction.correctedWord;
+      recognitionState.correctedWords.push(correction.correctedWord);
+      recognitionState.candidates = correction.candidates;
+      recognitionState.note = correction.note;
+      recognitionState.finalized = true;
+    }
+    finally
+    {
+      correctionInFlight = false;
+      recognitionState.updatedAt = new Date().toISOString();
+    }
     return;
   }
 
@@ -309,6 +326,7 @@ function resetRecognitionState(): void
   const next = createRecognitionState();
   Object.assign(recognitionState, next);
   lastAppendedJamo = null;
+  correctionInFlight = false;
 }
 
 function isVirtualSkeleton(value: unknown): value is VirtualSkeleton

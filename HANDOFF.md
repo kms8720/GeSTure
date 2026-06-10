@@ -262,3 +262,18 @@ macOS/Linux:
 ```
 
 `acc-gesture recognize`, `compose`, `capture`, `run`, `virtual-check`의 기본 reference path는 `jamo-recognition/data/reference_samples.jsonl`로 바뀌었다. 실행 로그와 임시 캡처 파일은 계속 루트 `data/`에 둘 수 있다.
+
+## 13. 2026-06-10 웹앱 LLM 보정 중복 호출 방지
+
+웹앱에서 6개 자모가 모인 순간 화면이 멈춘 것처럼 보이는 문제가 있었다. 원인은 LLM 보정 요청이 진행 중인 동안 손가락 update 이벤트가 계속 들어오면서 `updateRecognitionState()`가 같은 6개 자모를 여러 번 보정 요청하는 구조였다.
+
+수정 내용:
+
+```txt
+correctionInFlight flag 추가
+보정 중에는 새 LLM correction을 시작하지 않음
+보정에 넘긴 6개 token은 즉시 buffer에서 분리
+reset 시 correctionInFlight도 함께 초기화
+```
+
+이제 6개 자모 단위 correction은 한 번만 실행되며, 중복 `correctedWords` 누적을 막는다. LLM 자체 응답 시간은 모델/장비 상태에 따라 몇 초 이상 걸릴 수 있지만, 같은 correction이 동시에 여러 번 쌓이는 문제는 줄였다.
