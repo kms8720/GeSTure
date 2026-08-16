@@ -1,0 +1,419 @@
+:root {
+  --ink: #f2f7ff;
+  --ink-dim: #8ea3ba;
+  --ink-faint: #4d6076;
+  --bg: #050b12;
+  --panel: rgba(18, 28, 40, 0.72);
+  --line: rgba(126, 168, 214, 0.22);
+  --accent: #7ec8ff;
+  --accent-warm: #ffcf8f;
+  --danger: #ff7a7a;
+
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ */
+/* 손 화면 — 세로로 세운 디스플레이 1대. 손 외에는 아무것도 없다        */
+/* ------------------------------------------------------------------ */
+
+.hand-screen {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+.hand-stage,
+.hand-stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ------------------------------------------------------------------ */
+/* 단어 화면 — 손과 분리된 별도 디스플레이 1대                          */
+/* ------------------------------------------------------------------ */
+
+.word-screen {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 4vh;
+  align-items: center;
+  justify-items: center;
+  height: 100%;
+  padding: 6vh 5vw;
+  text-align: center;
+}
+
+.word-screen__label {
+  margin: 0 0 1.4rem;
+  font-size: clamp(0.85rem, 1.4vw, 1.2rem);
+  letter-spacing: 0.18em;
+  color: var(--ink-dim);
+}
+
+.word-screen__candidates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  justify-content: center;
+}
+
+.jamo-chip {
+  min-width: clamp(3rem, 5vw, 5.6rem);
+  padding: 0.4rem 0.7rem;
+  font-size: clamp(2rem, 3.6vw, 4rem);
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--bg);
+  background: var(--accent);
+  border-radius: 0.8rem;
+}
+
+.word-screen__hint {
+  margin: 1.1rem 0 0;
+  font-size: clamp(0.8rem, 1.15vw, 1.1rem);
+  color: var(--accent-warm);
+}
+
+.word-screen__rest {
+  margin: 0;
+  font-size: clamp(1.1rem, 1.8vw, 1.8rem);
+  color: var(--ink-faint);
+}
+
+/* 슬롯 진행 */
+.slot-track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  justify-content: center;
+}
+
+/* 한 슬롯에 자모 후보가 최대 6개까지 들어간다. 넘치지 않게 감싸 준다 */
+.slot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.05rem 0.2rem;
+  align-content: center;
+  justify-content: center;
+  width: clamp(4rem, 6.4vw, 7rem);
+  height: clamp(4rem, 6.4vw, 7rem);
+  padding: 0.45rem;
+  overflow: hidden;
+  font-size: clamp(0.85rem, 1.2vw, 1.35rem);
+  font-weight: 600;
+  line-height: 1.2;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: rgba(10, 18, 27, 0.6);
+  color: var(--ink-faint);
+}
+
+.slot span { display: inline-block; }
+
+.slot.is-filled {
+  color: var(--ink);
+  border-color: var(--accent);
+  background: rgba(126, 200, 255, 0.14);
+}
+
+/* 단어 */
+.word-main {
+  display: grid;
+  place-content: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.word-main__word {
+  display: block;
+  font-size: clamp(4rem, 13vw, 15rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.03em;
+}
+
+.word-main__meta {
+  margin: 0;
+  font-size: clamp(0.95rem, 1.5vw, 1.5rem);
+  color: var(--ink-dim);
+}
+
+.word-main__waiting,
+.word-main__working {
+  margin: 0;
+  font-size: clamp(1.1rem, 1.9vw, 2rem);
+  color: var(--ink-dim);
+}
+
+.word-main.is-working .word-main__working { color: var(--accent-warm); }
+
+.word-main__working::after {
+  content: '';
+  display: inline-block;
+  width: 1.2em;
+  text-align: left;
+  animation: dots 1.4s steps(4, end) infinite;
+}
+
+@keyframes dots {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+}
+
+/* 지금까지 만들어진 말 */
+.word-trail {
+  display: grid;
+  gap: 0.8rem;
+  justify-items: center;
+  width: 100%;
+}
+
+.word-trail__label {
+  font-size: clamp(0.7rem, 1vw, 0.95rem);
+  letter-spacing: 0.18em;
+  color: var(--ink-faint);
+}
+
+.word-trail__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.4rem;
+  justify-content: center;
+  font-size: clamp(1rem, 1.7vw, 1.8rem);
+  color: var(--ink-dim);
+}
+
+.offline-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 9;
+  width: 100%;
+  padding: 0.6rem;
+  text-align: center;
+  background: var(--danger);
+  color: #1a0505;
+  font-weight: 600;
+}
+/* ------------------------------------------------------------------ */
+/* 조종기 디스플레이 5대                                                */
+/* ------------------------------------------------------------------ */
+
+.controller-screen {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto auto;
+  gap: 2vh;
+  place-items: center;
+  height: 100%;
+  padding: 4vh 4vw;
+  text-align: center;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.controller-station {
+  display: grid;
+  place-items: center;
+  width: clamp(3rem, 8vh, 5rem);
+  height: clamp(3rem, 8vh, 5rem);
+  font-size: clamp(1.4rem, 4vh, 2.4rem);
+  font-weight: 700;
+  color: var(--bg);
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.controller-name {
+  margin: 0;
+  font-size: clamp(2.4rem, 9vh, 5rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.controller-readout__value {
+  font-size: clamp(3rem, 12vh, 7rem);
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.controller-slider-wrap {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 1.2vh;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.controller-edge { font-size: clamp(0.9rem, 2.2vh, 1.3rem); color: var(--ink-dim); }
+
+/*
+ * 가로 슬라이더를 -90도 돌려 세로로 쓴다.
+ * 컨테이너 쿼리 단위(cqh)로 폭을 셸의 높이에 맞춰야 회전 후 길이가 맞는다.
+ */
+.controller-slider-shell {
+  container-type: size;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.controller-slider {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100cqh;
+  height: clamp(4.4rem, 11vw, 7rem);
+  margin: 0;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+
+.controller-slider::-webkit-slider-runnable-track {
+  height: clamp(1.1rem, 2.6vw, 1.8rem);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.controller-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: clamp(4.4rem, 11vw, 7rem);
+  height: clamp(4.4rem, 11vw, 7rem);
+  /* 트랙 두께와 썸 지름의 차이를 반씩 위로 올려 가운데를 맞춘다 */
+  margin-top: calc((clamp(1.1rem, 2.6vw, 1.8rem) - clamp(4.4rem, 11vw, 7rem)) / 2);
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 2.4rem rgba(126, 200, 255, 0.55);
+}
+
+.controller-slider::-moz-range-track {
+  height: clamp(1.1rem, 2.6vw, 1.8rem);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.controller-slider::-moz-range-thumb {
+  width: clamp(4.4rem, 11vw, 7rem);
+  height: clamp(4.4rem, 11vw, 7rem);
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.controller-quick {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.controller-quick button {
+  padding: 1.1rem 1.6rem;
+  font-size: clamp(0.95rem, 2.2vh, 1.3rem);
+  background: rgba(126, 200, 255, 0.12);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.controller-quick button:active { background: rgba(126, 200, 255, 0.3); }
+
+.controller-status { margin: 0; font-size: clamp(0.85rem, 2vh, 1.1rem); }
+.controller-status.is-online { color: var(--ink-faint); }
+.controller-status.is-offline { color: var(--danger); }
+
+.controller-error { display: grid; gap: 1rem; place-items: center; height: 100%; align-content: center; }
+
+/* ------------------------------------------------------------------ */
+/* 운영 모니터                                                          */
+/* ------------------------------------------------------------------ */
+
+.monitor { padding: 1.5rem 2rem 4rem; font-size: 0.9rem; }
+
+.monitor__head {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.monitor__head h1 { margin: 0; font-size: 1.4rem; }
+
+.monitor__actions { display: flex; gap: 0.6rem; }
+
+.monitor__actions button {
+  padding: 0.55rem 1rem;
+  background: rgba(126, 200, 255, 0.12);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+}
+
+.monitor__actions button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.monitor__status { margin-left: auto; font-weight: 600; letter-spacing: 0.1em; }
+.monitor__status.is-online { color: var(--accent); }
+.monitor__status.is-offline { color: var(--danger); }
+
+.monitor__health { color: var(--ink-dim); }
+
+.monitor__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.monitor__card {
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  background: rgba(14, 22, 32, 0.6);
+  overflow-x: auto;
+}
+
+.monitor__card--wide { grid-column: 1 / -1; }
+
+.monitor__card h2 { margin: 0 0 0.8rem; font-size: 0.95rem; color: var(--accent); }
+
+.monitor__card table { width: 100%; border-collapse: collapse; }
+.monitor__card td, .monitor__card th { padding: 0.25rem 0.5rem; text-align: left; }
+.monitor__card th { color: var(--ink-dim); font-weight: 500; }
+.monitor__card .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.monitor__card dl { display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 1rem; margin: 0; }
+.monitor__card dt { color: var(--ink-dim); }
+.monitor__card dd { margin: 0; word-break: break-word; }
+.monitor__card dd.big { font-size: 1.6rem; font-weight: 700; }
+
+.monitor__slots { margin: 0; padding-left: 1.2rem; }
+.monitor__slots code { color: var(--accent); }
+.monitor__note { color: var(--ink-dim); }
+
+.monitor__poses tr.is-current { background: rgba(126, 200, 255, 0.14); }
+
+.monitor__words { font-size: 1.1rem; line-height: 1.9; }
