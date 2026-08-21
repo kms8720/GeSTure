@@ -27,16 +27,24 @@ type FingerRigConfig = {
 const MODEL_PATH = '/models/robot_hand_rig.glb';
 
 /**
- * 벌림은 굽힘에 따라간다.
+ * 벌림은 굽힘에 따라간다. 아래 수치는 실제 손 개폐 영상에서 측정한 값이다.
  *
- * 처음에는 포즈 클래스마다 실측 벌림 프리셋을 얹었는데, 손을 쥐었다 폈다 할 때
- * 벌어지는 방향이 실제 손과 반대로 보였다. 원인을 데이터에서 확인했다.
- * reference_samples.jsonl은 31개 정적 지화를 찍은 것이라 각 지화 고유의 벌림만 들어 있고,
- * 손을 쥐고 펴는 동작 자체가 없다. 굽힘과 벌림의 상관은 전체 -0.04로 사실상 무관하고
- * 손가락별 부호도 제각각이었다(엄지 +0.34, 약지 -0.38).
+ * 측정: 63초 손 개폐 영상 -> 10fps 프레임 630장 -> MediaPipe 검출 620장(98%).
+ * 손가락 뿌리관절(MCP -> PIP)의 좌우 각도를 손 자체 기준으로 재고,
+ * 네 손가락 평균을 빼서 순수한 부채꼴 성분만 남겼다.
  *
- * 그래서 프리셋을 버리고 해부학적 결합을 직접 넣었다.
- * 손가락을 펴면 중지를 축으로 부채꼴로 퍼지고, 접으면 손바닥 가운데로 모인다.
+ *   부채꼴 폭   펴짐 13.3도  ->  접힘 4.3도   (수축비 0.33)
+ *   펴짐(n=183) index -6.6  middle -1.0  ring +0.9  pinky +6.7
+ *
+ * 펴짐 구간은 index -> pinky 가 단조롭게 벌어진다. 접힘 구간은 표본이 25장뿐이라
+ * 순서가 흔들려서, 부채꼴 모양은 펴짐 것을 쓰고 폭만 0.33배로 줄였다.
+ *
+ * 측정 부호(양수 = 소지쪽)와 이 리그의 y축 부호가 반대라 뒤집어 넣었다.
+ *
+ * 앞선 버전은 포즈 클래스별 실측 벌림 프리셋을 얹었는데 방향이 실제 손과 반대로 보였다.
+ * reference_samples.jsonl이 31개 정적 지화라 개폐 동작 자체가 없었기 때문이다
+ * (굽힘-벌림 상관 전체 -0.04, 손가락별 부호도 제각각).
+ *
  * 관객은 여전히 굽힘 하나만 조작한다.
  */
 const FINGER_RIGS: Record<FingerName, FingerRigConfig> = {
@@ -45,10 +53,11 @@ const FINGER_RIGS: Record<FingerName, FingerRigConfig> = {
     flexAngles: [0.82, 1.02],
     flexAxis: 'z',
     flexDirection: 1,
-    // 엄지는 부채꼴이 아니라 손바닥에서 멀어졌다 붙었다 한다
+    // 엄지는 부채꼴이 아니라 손바닥에서 멀어졌다 붙었다 한다.
+    // 실측 변화량 10.2도를 중앙에 맞춰 나눠 넣었다
     spreadAxis: 'y',
-    spreadOpen: 0.26,
-    spreadClosed: -0.10
+    spreadOpen: 0.089,
+    spreadClosed: -0.089
   },
   index: {
     pivots: ['index_base_pivot', 'index_middle_pivot', 'index_tip_pivot'],
@@ -56,18 +65,18 @@ const FINGER_RIGS: Record<FingerName, FingerRigConfig> = {
     flexAxis: 'x',
     flexDirection: 1,
     spreadAxis: 'y',
-    spreadOpen: 0.15,
-    spreadClosed: -0.05
+    spreadOpen: 0.115,
+    spreadClosed: 0.038
   },
   middle: {
     pivots: ['middle_base_pivot', 'middle_middle_pivot', 'middle_tip_pivot'],
     flexAngles: [1.04, 1.32, 1.04],
     flexAxis: 'x',
     flexDirection: 1,
-    // 중지는 부채꼴의 축이라 거의 움직이지 않는다
+    // 중지는 부채꼴의 축에 가까워 거의 움직이지 않는다
     spreadAxis: 'y',
-    spreadOpen: 0.02,
-    spreadClosed: 0
+    spreadOpen: 0.017,
+    spreadClosed: 0.006
   },
   ring: {
     pivots: ['ring_base_pivot', 'ring_middle_pivot', 'ring_tip_pivot'],
@@ -75,8 +84,8 @@ const FINGER_RIGS: Record<FingerName, FingerRigConfig> = {
     flexAxis: 'x',
     flexDirection: 1,
     spreadAxis: 'y',
-    spreadOpen: -0.13,
-    spreadClosed: 0.04
+    spreadOpen: -0.016,
+    spreadClosed: -0.005
   },
   pinky: {
     pivots: ['pinky_base_pivot', 'pinky_middle_pivot', 'pinky_tip_pivot'],
@@ -84,8 +93,8 @@ const FINGER_RIGS: Record<FingerName, FingerRigConfig> = {
     flexAxis: 'x',
     flexDirection: 1,
     spreadAxis: 'y',
-    spreadOpen: -0.24,
-    spreadClosed: 0.07
+    spreadOpen: -0.116,
+    spreadClosed: -0.038
   }
 };
 
