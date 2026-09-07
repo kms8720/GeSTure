@@ -4,6 +4,7 @@ import {
   FINGER_LABELS,
   FINGER_ORDER,
   HandState,
+  ParticipationSummary,
   PoseClass,
   RecognitionState
 } from '../socket/types';
@@ -11,6 +12,7 @@ import {
 type MonitorProps = {
   handState: HandState;
   controllerState: ControllerState;
+  participationSummary: ParticipationSummary;
   recognitionState: RecognitionState;
   poseClasses: PoseClass[];
   serverOnline: boolean;
@@ -22,7 +24,7 @@ type MonitorProps = {
  * ACC 버전에서 미구현으로 남아 있던 reset과 강제 확정 버튼을 여기 넣었다.
  * 관객이 손 모양을 다 채우지 않고 떠났을 때 운영자가 끊어줄 수단이 필요하다.
  */
-export default function Monitor({ handState, controllerState, recognitionState, poseClasses, serverOnline }: MonitorProps)
+export default function Monitor({ handState, controllerState, participationSummary, recognitionState, poseClasses, serverOnline }: MonitorProps)
 {
   const { current, slots, slotsNeeded, correction, words, correcting, note, updatedAt } = recognitionState;
   const [busy, setBusy] = useState(false);
@@ -64,7 +66,10 @@ export default function Monitor({ handState, controllerState, recognitionState, 
         </span>
       </header>
 
-      <p className="monitor__health">{health} · 마지막 갱신 {updatedAt || '-'}</p>
+      <p className="monitor__health">
+        {health} · 참여 {participationSummary.connectedCount}명 · 점유 {participationSummary.occupiedCount}/5
+        {' · '}대기 {participationSummary.waitingCount}명 · 마지막 갱신 {updatedAt || '-'}
+      </p>
 
       <section className="monitor__grid">
         <div className="monitor__card">
@@ -75,7 +80,22 @@ export default function Monitor({ handState, controllerState, recognitionState, 
                 <tr key={finger}>
                   <td>{FINGER_LABELS[finger]}</td>
                   <td className="num">{handState[finger]}</td>
-                  <td>{controllerState[finger] ? '조종기 연결' : '조종기 없음'}</td>
+                  <td>{{
+                    available: '빈 자리',
+                    connected: '관객 연결',
+                    reconnecting: '재접속 대기'
+                  }[controllerState[finger].status]}</td>
+                  <td>
+                    {controllerState[finger].status !== 'available' && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => post(`/participants/${finger}/release`)}
+                      >
+                        자리 반환
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

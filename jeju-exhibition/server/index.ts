@@ -20,6 +20,10 @@ import {
   rankPoses,
   recognizePose
 } from './poseRecognizer.js';
+import {
+  ParticipantSessions,
+  ReleaseResult
+} from './participantSessions.js';
 import { JamoSlot, WordCorrection, correctWord, matchVocabulary, warmUpOllama } from './wordCorrection.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -64,9 +68,7 @@ const recognitionState: RecognitionState = {
  */
 let generation = 0;
 
-const controllerSockets: Record<Finger, Set<string>> = {
-  thumb: new Set(), index: new Set(), middle: new Set(), ring: new Set(), pinky: new Set()
-};
+const participants = new ParticipantSessions();
 
 function isFinger(value: unknown): value is Finger
 {
@@ -79,11 +81,9 @@ function clampFingerValue(value: unknown): number
   return Number.isNaN(numeric) ? 0 : Math.max(0, Math.min(100, Math.round(numeric)));
 }
 
-function getControllerState(): Record<Finger, boolean>
+function isParticipantToken(value: unknown): value is string
 {
-  return Object.fromEntries(
-    FINGERS.map((finger) => [finger, controllerSockets[finger].size > 0])
-  ) as Record<Finger, boolean>;
+  return typeof value === 'string' && /^[A-Za-z0-9_-]{16,128}$/.test(value);
 }
 
 function getLanAddresses(): string[]
@@ -166,6 +166,19 @@ app.post('/recognition/finalize', async (_request, response) =>
   response.json({ ok: true, recognitionState });
 });
 
+app.post('/participants/:finger/release', (request, response) =>
+{
+  if (!isFinger(request.params.finger))
+  {
+    response.status(400).json({ ok: false, error: 'unknown finger' });
+    return;
+  }
+
+  const result = participants.releaseFinger(request.params.finger);
+  applyParticipantRelease(result);
+  response.json({ ok: true, controllerState: participants.getControllerState() });
+});
+
 app.post('/word-correction', async (request, response) =>
 {
   const payload = request.body as { slots?: unknown };
@@ -209,44 +222,124 @@ app.get('/vocabulary-match', (request, response) =>
 io.on('connection', (socket) =>
 {
   socket.emit('hand:state', handState);
-  socket.emit('controller:state', getControllerState());
+  socket.emit('controller:state', participants.getControllerState());
+  socket.emit('participation:summary', participants.getSummary());
   socket.emit('recognition:state', recognitionState);
   socket.emit('pose:classes', POSE_CLASSES);
 
-  socket.on('controller:join', (payload: { finger?: unknown }) =>
+  socket.on('participant:join', (payload: { token?: unknown }) =>
   {
-    if (!isFinger(payload?.finger))
+    if (!isParticipantToken(payload?.token))
     {
+      socket.emit('participant:error', { message: '참여 세션을 만들 수 없다. 페이지를 새로고침해 주세요.' });
       return;
     }
 
-    controllerSockets[payload.finger].add(socket.id);
-    socket.data.controllerFinger = payload.finger;
-    io.emit('controller:state', getControllerState());
+    const result = participants.join(payload.token, socket.id);
+    socket.data.participantToken = payload.token;
+
+    if (result.replacedSocketId)
+    {
+      const replacedSocket = io.sockets.sockets.get(result.replacedSocketId);
+      if (replacedSocket)
+      {
+        replacedSocket.data.participantToken = undefined;
+        replacedSocket.emit('participant:state', {
+          status: 'released',
+          finger: null,
+          queuePosition: null,
+          summary: participants.getSummary()
+        });
+      }
+    }
+
+    broadcastParticipation();
     socket.emit('hand:state', handState);
   });
 
-  socket.on('finger:update', (payload: { finger?: unknown; value?: unknown }) =>
+  socket.on('finger:update', (payload: { value?: unknown }) =>
   {
-    if (!isFinger(payload?.finger))
+    const token = socket.data.participantToken;
+    if (!isParticipantToken(token))
     {
       return;
     }
 
-    handState[payload.finger] = clampFingerValue(payload.value);
+    const finger = participants.getAssignedFinger(token, socket.id);
+    if (!finger)
+    {
+      return;
+    }
+
+    handState[finger] = clampFingerValue(payload.value);
     advance();
+  });
+
+  socket.on('participant:leave', () =>
+  {
+    const token = socket.data.participantToken;
+    if (!isParticipantToken(token))
+    {
+      return;
+    }
+
+    socket.data.participantToken = undefined;
+    const result = participants.release(token);
+    applyParticipantRelease(result);
+    socket.emit('participant:state', participants.getState(token));
   });
 
   socket.on('disconnect', () =>
   {
-    const finger = socket.data.controllerFinger;
-    if (isFinger(finger))
-    {
-      controllerSockets[finger].delete(socket.id);
-    }
-    io.emit('controller:state', getControllerState());
+    participants.disconnect(socket.id);
+    broadcastParticipation();
   });
 });
+
+function broadcastParticipation(): void
+{
+  io.emit('controller:state', participants.getControllerState());
+  io.emit('participation:summary', participants.getSummary());
+
+  io.sockets.sockets.forEach((connectedSocket) =>
+  {
+    const token = connectedSocket.data.participantToken;
+    if (isParticipantToken(token))
+    {
+      connectedSocket.emit('participant:state', participants.getState(token));
+    }
+  });
+}
+
+function applyParticipantRelease(result: ReleaseResult): void
+{
+  if (result.releasedFinger)
+  {
+    handState[result.releasedFinger] = 100;
+    advance();
+  }
+  broadcastParticipation();
+}
+
+const participantExpiryTimer = setInterval(() =>
+{
+  const expired = participants.expire();
+  if (expired.length === 0)
+  {
+    return;
+  }
+
+  expired.forEach((result) =>
+  {
+    if (result.releasedFinger)
+    {
+      handState[result.releasedFinger] = 100;
+    }
+  });
+  advance();
+  broadcastParticipation();
+}, 500);
+participantExpiryTimer.unref();
 
 function broadcast(): void
 {
@@ -387,7 +480,8 @@ httpServer.listen(PORT, '0.0.0.0', () =>
   {
     console.log(`  손 화면 (세로)  http://${address}:${PORT}/display/hand`);
     console.log(`  단어 화면       http://${address}:${PORT}/display/word`);
-    console.log(`  조종기 1~5      http://${address}:${PORT}/control/thumb ... /pinky`);
+    console.log(`  관객 QR 주소     http://${address}:${PORT}/join`);
+    console.log(`  QR 안내 화면     http://${address}:${PORT}/join/qr`);
     console.log(`  운영 모니터     http://${address}:${PORT}/monitor`);
   });
 
