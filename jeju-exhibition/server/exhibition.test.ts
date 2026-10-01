@@ -151,6 +151,24 @@ test('three complete cycles do not carry an old pose or word into the next cycle
   }
 });
 
+test('an explicit press of the current value resumes recording after reset or word completion', async () =>
+{
+  const client = await connectParticipant(0);
+  client.emit('finger:update', { value: 0 });
+  await until(async () => (await state()).slots.length === 1);
+  for (const action of ['/recognition/finalize', '/recognition/reset'])
+  {
+    assert.equal((await post(action)).status, 200);
+    await delay(650);
+    assert.equal((await state()).slots.length, 0);
+    assert.equal((await hand()).thumb, 0);
+    client.emit('finger:update', { value: 0 });
+    await until(async () => (await state()).slots.length === 1);
+    await delay(650);
+    assert.equal((await state()).slots.length, 1);
+  }
+});
+
 test('five sockets control only their assigned fingers and three waiters succeed in order', async () =>
 {
   const clients: Socket[] = [];

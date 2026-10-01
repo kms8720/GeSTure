@@ -370,10 +370,11 @@ function suspendRecording(): void
 
 function updateFinger(finger: Finger, value: number): void
 {
+  // 서버에 의한 자리 반환과 단어 완성은 입력이 아니다. 다음 관객의 실제 조작으로 재개한다.
+  // 현재 선택된 단계 버튼을 다시 눌러도 명시적 입력이다. 값 비교 전에 기록을 재개한다.
+  if (!recognitionState.correcting) recordingEnabled = true;
   if (handState[finger] === value) return;
   handState[finger] = value;
-  // 서버에 의한 자리 반환과 단어 완성은 입력이 아니다. 다음 관객의 실제 조작으로 재개한다.
-  if (!recognitionState.correcting) recordingEnabled = true;
 }
 
 function applyParticipantRelease(result: ReleaseResult): void
