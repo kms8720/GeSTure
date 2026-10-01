@@ -48,6 +48,8 @@ ACC 전시에서도 단어는 프로젝터나 별도 화면으로 손과 분리�
 ```sh
 cd jeju-exhibition
 npm install
+npm run setup
+# .env의 PUBLIC_ORIGIN / WIFI_SSID / WIFI_PASSWORD를 현장 정보로 설정
 npm run build
 npm start
 ```
@@ -60,6 +62,7 @@ npm start
 관객 참여        http://<IP>:3002/join
 QR 안내 화면     http://<IP>:3002/join/qr
 운영 모니터     http://<IP>:3002/monitor
+휴대폰 연결 점검 http://<IP>:3002/check
 ```
 
 개발 중에는:
@@ -78,15 +81,61 @@ npx tsx server/smoke.ts   # 인식기/단어 생성 파이프라인 점검
   → 각자 휴대폰에서 손가락 굽힘 조절
   → 굽힘 5개 값
   → 17개 지화 포즈 클래스 중 최근접 (도달 확률 균등화 bias 적용)
-  → 400ms 유지되면 슬롯에 기록 (자모 후보 집합 그대로)
+  → 100ms 주기 평가, 400ms 유지되면 추가 입력 없이 슬롯에 기록 (자모 후보 집합 그대로)
   → 슬롯 6개가 모이면 단어 생성
-      Ollama가 후보 조합에서 뜻이 통하는 단어를 고름
+      Ollama가 후보 조합에서 뜻이 통하는 단어를 고름 (기본 전시 모드는 단어장 안으로 제한)
       실패하면 단어장에서 후보 자모로 가장 잘 설명되는 단어
   → /display/word 에 표시. 손은 /display/hand 에서 계속 움직인다
 ```
 
 같은 포즈 클래스는 한 단어 안에서 한 번만 기록된다.
 다섯 손가락을 모두 펴면(85 이상) rest로 보고 아무것도 기록하지 않는다.
+단어 완성·초기화·자리 반환 뒤에는 새로운 실제 조작이 있어야 다음 기록을 시작한다.
+생성 중 입력은 손을 움직이지만 다음 단어에 자동 기록하지 않는다.
+마지막 관객이 연결을 끊으면 인식 기록을 잠시 멈춘다. 손가락 값은 기존 15초 유예 정책을 따른다.
+상태가 달라졌을 때만 브로드캐스트하며 입력 드래그 빈도와 별개로 최대 10Hz로 갱신한다.
+
+## 운영자 키와 결과 제어
+
+`npm run setup`은 `.env`에 무작위 운영자 키를 생성한다. 기존 키와 설정은 재실행해도 유지한다.
+`npm start`는 `.env`를 읽는다. Node.js 22.18 이상을 사용한다.
+`/monitor`에서 `.env`의 `OPERATOR_TOKEN` 값을 입력하면 초기화, 강제 단어 생성, 자리 반환,
+`지금 단어 내리기`를 사용할 수 있다. 키는 현재 화면의 메모리에만 두므로 새로고침하면 다시 입력한다.
+
+모든 POST API는 `Authorization: Bearer <운영자 키>`를 요구한다. 키가 없으면 503, 틀리면 401이다.
+관객 QR과 URL에는 운영자 키를 넣지 않는다. 관객의 소켓 조종은 별도 참여 토큰으로 배정한 손가락만 허용한다.
+한 소켓의 다른 토큰 재입장은 거부하며, 같은 토큰의 새 탭은 기존 탭의 조종 권한을 넘겨받는다.
+
+`지금 단어 내리기`는 현재 단어를 화면과 메모리 기록에서 제거하고 진행 중 결과도 취소한다.
+초기화·결과 내리기 뒤 늦게 돌아온 생성 응답은 화면에 반영하지 않는다.
+
+## 휴대폰 접속과 QR 안내판
+
+같은 Wi-Fi에 연결된 노트북과 휴대폰으로 테스트할 수 있다. 공유기가 기기 간 통신을 허용해야 한다.
+휴대폰의 `localhost`는 휴대폰 자신이므로 노트북의 LAN IP로 접속한다.
+전시에서는 공유기의 DHCP 주소 예약으로 서버 IP를 고정하고 아래 항목을 `.env`에 입력한다.
+
+```dotenv
+# 예시 주소이며 실제 서버 IP로 변경
+PUBLIC_ORIGIN=http://192.168.50.10:3002
+WIFI_SSID=작품용-WiFi
+WIFI_PASSWORD=관객용-비밀번호
+```
+
+`/join/qr`에는 Wi-Fi 접속 안내와 참여 QR, 짧은 주소가 함께 표시된다. Wi-Fi QR은 1단계,
+참여 QR은 2단계로 구분한다. 고정 참여 주소와 Wi-Fi 이름이 설정되면 안내판 인쇄 버튼을 사용할 수 있다.
+비밀번호는 관객용 전용 Wi-Fi 정보이며 운영자 키와 반드시 다르게 둔다.
+여러 LAN 주소가 감지되면 첫 번째 주소를 임의로 QR에 쓰지 않는다.
+`PUBLIC_ORIGIN`에 localhost, 계정 정보, 경로, 쿼리를 넣으면 서버가 시작되지 않는다.
+
+```sh
+npm run check:network -- http://실제서버IP:3002
+```
+
+이 명령은 화면과 API, 실시간 소켓 상태 수신, 안내 설정과 검사 주소 일치를 확인한다.
+Wi-Fi 안내가 없거나 localhost로 검사하면 성공으로 처리하지 않는다.
+명령의 성공만으로 휴대폰 실기·공유기 설정이 검증된 것은 아니다.
+현장 절차와 남은 실기 항목은 [docs/network-setup.md](docs/network-setup.md)를 따른다.
 
 ## 파일
 
@@ -103,7 +152,9 @@ server/
 client/src/
   pages/HandDisplay.tsx  손만 보이는 세로 디스플레이
   pages/WordDisplay.tsx  자모 후보 / 슬롯 / 단어
-  pages/Controller.tsx   조종기 디스플레이 5대
+  pages/Controller.tsx   관객 개인 휴대폰 조종·대기·종료
+  pages/JoinQr.tsx       Wi-Fi와 참여 QR 안내·인쇄
+  pages/ConnectionCheck.tsx  휴대폰 HTTP·소켓 연결 점검
   pages/Monitor.tsx      운영자용
   components/VirtualHand.tsx  GLB 로봇손. 굽힘은 관객 값 그대로, 벌림은 굽힘에 연동
 
@@ -158,10 +209,19 @@ curl -s http://127.0.0.1:11434/api/ps    # 비어 있으면 내려간 것
 | `PORT` | 3002 | |
 | `SLOTS_PER_WORD` | 6 | 단어 하나에 필요한 손 모양 개수 |
 | `POSE_HOLD_MS` | 400 | 이 시간 유지해야 슬롯에 기록 |
+| `PUBLIC_ORIGIN` | 자동 감지 | 인쇄 QR에 사용할 고정 서버 origin |
+| `WIFI_SSID` / `WIFI_PASSWORD` | 없음 | 관객용 Wi-Fi 안내와 연결 QR |
+| `OPERATOR_TOKEN` | 없음 | 미설정 시 변경 API 잠김, setup으로 생성 |
+| `EXHIBITION_STRICT` | 1 | 전시 출력은 검토된 단어장으로 제한 |
 | `OLLAMA_URL` | `http://127.0.0.1:11434` | |
 | `OLLAMA_MODEL` | `qwen2.5:7b-instruct` | |
 | `OLLAMA_TIMEOUT_MS` | 20000 | 넘기면 단어장으로 대체 |
+| `WORD_DEADLINE_MS` | 20000 | 생성과 추가 검증을 합친 전체 시간 상한 |
 | `OLLAMA_KEEP_ALIVE` | `8h` | 전시 중 모델 언로드 방지 |
+
+기본 전시 모드는 목록 밖 결과를 추가 LLM 호출 없이 단어장으로 대체한다.
+형식 오류, 금칙어, 연결 실패, 시간 초과도 같은 대체 경로를 사용한다.
+`EXHIBITION_STRICT=0`은 개발 실험용으로만 사용하며, 목록 밖 단어의 추가 검증도 전체 시간 상한을 공유한다.
 
 ## GLB 파일
 

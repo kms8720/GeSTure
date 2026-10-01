@@ -71,3 +71,41 @@ test('a disconnected waiter takes a free slot when it reconnects', () =>
   assert.equal(sessions.join('waiting-token', 'waiting-socket-new').state.finger, 'thumb');
   assert.equal(sessions.getSummary().waitingCount, 0);
 });
+
+test('a socket cannot leak slots by joining with different tokens', () =>
+{
+  const sessions = new ParticipantSessions();
+  sessions.join('first-token', 'same-socket');
+  for (let index = 0; index < 4; index++)
+  {
+    assert.throws(() => sessions.join(`other-token-${index}`, 'same-socket'));
+  }
+  assert.equal(sessions.getSummary().occupiedCount, 1);
+  sessions.disconnect('same-socket', 1000);
+  sessions.expire(1000 + PARTICIPANT_RECONNECT_GRACE_MS);
+  assert.equal(sessions.getSummary().occupiedCount, 0);
+});
+
+test('an old tab disconnect cannot detach a replacement connection', () =>
+{
+  const sessions = new ParticipantSessions();
+  sessions.join('shared-token', 'old-socket');
+  assert.equal(sessions.join('shared-token', 'new-socket').replacedSocketId, 'old-socket');
+  sessions.disconnect('old-socket', 1000);
+  sessions.expire(1000 + PARTICIPANT_RECONNECT_GRACE_MS);
+  assert.equal(sessions.getAssignedFinger('shared-token', 'new-socket'), 'thumb');
+  sessions.release('shared-token');
+  assert.equal(sessions.join('another-token', 'new-socket').state.finger, 'thumb');
+});
+
+test('disconnected waiters retain order on reconnect and are skipped during promotion', () =>
+{
+  const sessions = new ParticipantSessions();
+  for (let i = 0; i < 8; i++) sessions.join(`token-${i}`, `socket-${i}`);
+  sessions.disconnect('socket-5', 1000);
+  assert.equal(sessions.release('token-0').promotedToken, 'token-6');
+  sessions.join('token-5', 'socket-5-new');
+  assert.equal(sessions.getState('token-5').queuePosition, 1);
+  assert.equal(sessions.release('token-1').promotedToken, 'token-5');
+  assert.equal(sessions.release('token-2').promotedToken, 'token-7');
+});

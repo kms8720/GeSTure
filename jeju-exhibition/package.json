@@ -10,8 +10,11 @@
     "build": "vite build",
     "start": "tsx server/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
-    "test": "tsx --test server/*.test.ts"
+    "test": "tsx --test server/*.test.ts",
+    "setup": "node scripts/setup-exhibition.mjs",
+    "check:network": "tsx scripts/check-network.ts"
   },
+  "engines": { "node": ">=22.18.0" },
   "dependencies": {
     "@react-three/drei": "latest",
     "@react-three/fiber": "latest",

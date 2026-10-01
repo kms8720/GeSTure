@@ -29,6 +29,26 @@ button {
   cursor: pointer;
 }
 
+.monitor__login { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; margin: 1rem 0; }
+.monitor__login input { min-height: 48px; padding: 0.5rem; background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
+.monitor__error { color: var(--danger); }
+.connection-check { max-width: 42rem; padding: 2rem; margin: auto; font-size: 1.1rem; line-height: 1.6; }
+.connection-check a, .connection-check button { display: inline-block; margin: 0.5rem; padding: 1rem; min-height: 48px; }
+.join-qr-wifi { padding: 1rem; border: 1px solid var(--line); }
+.join-qr-wifi p { margin: 0.5rem 0; overflow-wrap: anywhere; }
+.join-qr-wifi svg { background: white; padding: 8px; width: 136px; height: 136px; }
+.join-qr-no-print { margin-right: 1rem; padding: 0.7rem; }
+
+@media print {
+  @page { size: A4 landscape; margin: 15mm; }
+  html, body, #root, .join-qr-screen { height: auto !important; background: white !important; color: #111 !important; }
+  .join-qr-screen { min-height: 0 !important; padding: 0 !important; grid-template-columns: 1fr 1fr !important; }
+  .join-qr-screen p, .join-qr-screen li, .join-qr-screen strong, .join-qr-screen span { color: #111 !important; }
+  .join-qr-copy h1 { font-size: 30pt !important; }
+  .join-qr-code__box { box-shadow: none !important; padding: 10px !important; }
+  .join-qr-no-print, .join-qr-count { display: none !important; }
+}
+
 /* ------------------------------------------------------------------ */
 /* 손 화면 — 세로로 세운 디스플레이 1대. 손 외에는 아무것도 없다        */
 /* ------------------------------------------------------------------ */

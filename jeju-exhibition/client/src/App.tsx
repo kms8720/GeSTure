@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Controller from './pages/Controller';
+import ConnectionCheck from './pages/ConnectionCheck';
 import HandDisplay from './pages/HandDisplay';
 import JoinQr from './pages/JoinQr';
 import Monitor from './pages/Monitor';
@@ -78,6 +79,7 @@ export default function App()
         />
         <Route path="/display" element={<Navigate to="/display/hand" replace />} />
         <Route path="/join" element={<Controller handState={handState} serverOnline={serverOnline} />} />
+        <Route path="/check" element={<ConnectionCheck serverOnline={serverOnline} />} />
         <Route
           path="/join/qr"
           element={<JoinQr serverOnline={serverOnline} participationSummary={participationSummary} />}

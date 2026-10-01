@@ -89,6 +89,18 @@ export type ParticipationSummary = {
   waitingCount: number;
 };
 
+export type NetworkInfo = {
+  port: number;
+  addresses: string[];
+  publicOrigin: string | null;
+  joinUrl: string | null;
+  checkUrl: string | null;
+  configured: boolean;
+  wifiSsid: string;
+  wifiPassword: string;
+  warning: string;
+};
+
 export type ParticipantState = {
   status: 'assigned' | 'waiting' | 'released';
   finger: FingerName | null;

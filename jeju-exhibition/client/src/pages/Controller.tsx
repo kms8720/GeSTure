@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { socket } from '../socket/socket';
 import {
   FINGER_LABELS,
@@ -25,7 +25,7 @@ function loadToken(): string
   try
   {
     const stored = localStorage.getItem(SESSION_KEY);
-    if (stored)
+    if (stored && /^[A-Za-z0-9_-]{16,128}$/.test(stored))
     {
       return stored;
     }
@@ -56,15 +56,18 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
   const [token, setToken] = useState(loadToken);
   const [participant, setParticipant] = useState<ParticipantState | null>(null);
   const [error, setError] = useState('');
+  const finished = useRef(false);
 
   useEffect(() =>
   {
     const join = (): void =>
     {
-      socket.emit('participant:join', { token });
+      if (!finished.current) socket.emit('participant:join', { token });
     };
     const onState = (next: ParticipantState): void =>
     {
+      if (next.status === 'released') finished.current = true;
+      if (finished.current && next.status !== 'released') return;
       setParticipant(next);
       setError('');
     };
@@ -89,6 +92,7 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
 
   const leave = (): void =>
   {
+    finished.current = true;
     socket.emit('participant:leave');
     forgetToken();
     setParticipant({
@@ -101,6 +105,8 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
 
   const rejoin = (): void =>
   {
+    finished.current = false;
+    setError('');
     const nextToken = createToken();
     try
     {
@@ -121,7 +127,11 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
         <p className="controller-kicker">GESTURE</p>
         <h1>연결할 수 없습니다</h1>
         <p aria-live="assertive">{error}</p>
-        <button className="controller-primary" type="button" onClick={rejoin}>다시 시도</button>
+        <button className="controller-primary" type="button" onClick={() =>
+        {
+          setError('');
+          socket.emit('participant:join', { token });
+        }}>다시 시도</button>
       </main>
     );
   }
@@ -134,6 +144,8 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
         <div className="controller-loader" aria-hidden="true" />
         <h1>{serverOnline ? '빈 손가락을 찾고 있습니다' : '작품에 다시 연결하고 있습니다'}</h1>
         <p aria-live="polite">이 화면을 열어 두면 자동으로 연결됩니다.</p>
+        <p>작품 Wi-Fi에 연결되어 있는지 확인해 주세요.</p>
+        <a href="/check">연결 점검</a>
       </main>
     );
   }
@@ -214,6 +226,7 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
       <p className={`controller-status ${serverOnline ? 'is-online' : 'is-offline'}`} aria-live="polite">
         {serverOnline ? '손과 연결되어 있습니다' : '다시 연결하고 있습니다'}
       </p>
+      <p className="controller-subtle">지금 {participant.summary.connectedCount}명 참여 중 · 빈 자리 {5 - participant.summary.occupiedCount}개</p>
       <button className="controller-leave" type="button" onClick={leave}>참여 마치기</button>
     </main>
   );

@@ -42,11 +42,17 @@ export type ReleaseResult = {
 export class ParticipantSessions
 {
   private readonly sessions = new Map<string, ParticipantSession>();
+  private readonly socketTokens = new Map<string, string>();
   private readonly fingerOwners = new Map<Finger, string>();
   private readonly waitingTokens: string[] = [];
 
   public join(token: string, socketId: string): JoinResult
   {
+    const boundToken = this.socketTokens.get(socketId);
+    if (boundToken && boundToken !== token)
+    {
+      throw new Error('이미 참여 중인 연결입니다. 참여를 마친 뒤 다시 접속해 주세요.');
+    }
     const existing = this.sessions.get(token);
     let replacedSocketId: string | null = null;
 
@@ -55,9 +61,11 @@ export class ParticipantSessions
       if (existing.socketId && existing.socketId !== socketId)
       {
         replacedSocketId = existing.socketId;
+        this.socketTokens.delete(existing.socketId);
       }
       existing.socketId = socketId;
       existing.reconnectDeadline = null;
+      this.socketTokens.set(socketId, token);
 
       if (!existing.finger)
       {
@@ -77,6 +85,10 @@ export class ParticipantSessions
       return { state: this.getState(token), replacedSocketId };
     }
 
+    if (this.waitingTokens.length >= 128)
+    {
+      throw new Error('현재 대기 인원이 많습니다. 잠시 후 다시 참여해 주세요.');
+    }
     const freeFinger = FINGERS.find((finger) => !this.fingerOwners.has(finger)) ?? null;
     const session: ParticipantSession = {
       token,
@@ -85,6 +97,7 @@ export class ParticipantSessions
       reconnectDeadline: null
     };
     this.sessions.set(token, session);
+    this.socketTokens.set(socketId, token);
 
     if (freeFinger)
     {
@@ -100,7 +113,9 @@ export class ParticipantSessions
 
   public disconnect(socketId: string, now = Date.now()): void
   {
-    const session = Array.from(this.sessions.values()).find((entry) => entry.socketId === socketId);
+    const token = this.socketTokens.get(socketId);
+    const session = token ? this.sessions.get(token) : undefined;
+    this.socketTokens.delete(socketId);
     if (!session)
     {
       return;
@@ -126,6 +141,7 @@ export class ParticipantSessions
     }
 
     this.sessions.delete(token);
+    if (session.socketId) this.socketTokens.delete(session.socketId);
     const waitingIndex = this.waitingTokens.indexOf(token);
     if (waitingIndex >= 0)
     {
@@ -151,7 +167,7 @@ export class ParticipantSessions
   public getAssignedFinger(token: string, socketId: string): Finger | null
   {
     const session = this.sessions.get(token);
-    return session?.socketId === socketId ? session.finger : null;
+    return this.socketTokens.get(socketId) === token && session?.socketId === socketId ? session.finger : null;
   }
 
   public getState(token: string): ParticipantState
@@ -214,7 +230,7 @@ export class ParticipantSessions
 
   private promote(finger: Finger): string | null
   {
-    const index = this.waitingTokens.findIndex((token) => this.sessions.get(token)?.socketId !== null);
+    const index = this.waitingTokens.findIndex((token) => Boolean(this.sessions.get(token)?.socketId));
     if (index < 0)
     {
       return null;
