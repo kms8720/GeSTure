@@ -29,6 +29,26 @@ button {
   cursor: pointer;
 }
 
+.monitor__login { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; margin: 1rem 0; }
+.monitor__login input { min-height: 48px; padding: 0.5rem; background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
+.monitor__error { color: var(--danger); }
+.connection-check { max-width: 42rem; padding: 2rem; margin: auto; font-size: 1.1rem; line-height: 1.6; }
+.connection-check a, .connection-check button { display: inline-block; margin: 0.5rem; padding: 1rem; min-height: 48px; }
+.join-qr-wifi { display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; overflow-wrap: anywhere; }
+.join-qr-no-print { margin-right: 1rem; padding: 0.7rem; }
+
+@media print {
+  @page { size: A4 landscape; margin: 15mm; }
+  html, body, #root, .join-qr-screen { height: auto !important; background: white !important; color: #111 !important; }
+  .join-qr-screen { min-height: 0 !important; padding: 0 !important; }
+  .join-qr-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 4mm !important; }
+  .join-qr-screen p, .join-qr-screen h1, .join-qr-screen h2, .join-qr-screen span { color: #111 !important; }
+  .join-qr-header h1 { font-size: 26pt !important; }
+  .join-qr-card { padding: 3mm !important; background: white !important; border-color: #aaa !important; break-inside: avoid; }
+  .join-qr-code__box { box-shadow: none !important; padding: 0 !important; }
+  .join-qr-no-print, .join-qr-count, .join-qr-card__status { display: none !important; }
+}
+
 /* ------------------------------------------------------------------ */
 /* 손 화면 — 세로로 세운 디스플레이 1대. 손 외에는 아무것도 없다        */
 /* ------------------------------------------------------------------ */
@@ -218,136 +238,251 @@ button {
   font-weight: 600;
 }
 /* ------------------------------------------------------------------ */
-/* 조종기 디스플레이 5대                                                */
+/* 관객 휴대폰 조종기                                                   */
 /* ------------------------------------------------------------------ */
 
 .controller-screen {
   display: grid;
-  grid-template-rows: auto auto auto 1fr auto auto;
-  gap: 2vh;
+  gap: clamp(0.75rem, 2vh, 1.25rem);
   place-items: center;
-  height: 100%;
-  padding: 4vh 4vw;
+  min-height: 100dvh;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
   text-align: center;
   user-select: none;
   touch-action: manipulation;
+  overscroll-behavior: none;
+  --finger-color: var(--accent);
 }
 
-.controller-station {
-  display: grid;
-  place-items: center;
-  width: clamp(3rem, 8vh, 5rem);
-  height: clamp(3rem, 8vh, 5rem);
-  font-size: clamp(1.4rem, 4vh, 2.4rem);
+.controller-screen--thumb, .join-qr-card--thumb { --finger-color: #ffb86b; }
+.controller-screen--index, .join-qr-card--index { --finger-color: #70d6ff; }
+.controller-screen--middle, .join-qr-card--middle { --finger-color: #ae9cff; }
+.controller-screen--ring, .join-qr-card--ring { --finger-color: #ff8fbe; }
+.controller-screen--pinky, .join-qr-card--pinky { --finger-color: #7ee2a8; }
+
+.controller-screen--control {
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: clamp(1rem, 4vh, 2.5rem);
+  width: min(100%, 28rem);
+  height: 100dvh;
+  min-height: 0;
+  margin: 0 auto;
+  padding-top: max(clamp(1.5rem, 5vh, 3rem), env(safe-area-inset-top));
+  padding-bottom: max(clamp(1.5rem, 4vh, 2.5rem), env(safe-area-inset-bottom));
+  overflow: hidden;
+  background: #131716;
+  color: #f2f0e9;
+}
+
+.controller-screen--message {
+  align-content: center;
+  padding-inline: max(1.5rem, 8vw);
+}
+
+.controller-screen--message h1 { margin: 0; font-size: clamp(1.65rem, 7vw, 2.5rem); }
+.controller-screen--message p { max-width: 30rem; margin: 0; color: var(--ink-dim); line-height: 1.6; }
+
+.controller-kicker {
+  margin: 0 0 0.25rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  color: var(--bg);
-  background: var(--accent);
-  border-radius: 50%;
+  letter-spacing: 0.12em;
+  color: var(--ink-dim);
 }
 
 .controller-name {
   margin: 0;
-  font-size: clamp(2.4rem, 9vh, 5rem);
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: clamp(2rem, 5vh, 2.75rem);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
 }
 
-.controller-readout__value {
-  font-size: clamp(3rem, 12vh, 7rem);
-  font-weight: 300;
-  font-variant-numeric: tabular-nums;
-  color: var(--accent);
-}
-
-.controller-slider-wrap {
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: 1.2vh;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-}
-
-.controller-edge { font-size: clamp(0.9rem, 2.2vh, 1.3rem); color: var(--ink-dim); }
-
-/*
- * 가로 슬라이더를 -90도 돌려 세로로 쓴다.
- * 컨테이너 쿼리 단위(cqh)로 폭을 셸의 높이에 맞춰야 회전 후 길이가 맞는다.
- */
-.controller-slider-shell {
-  container-type: size;
+.controller-fader {
   position: relative;
   width: 100%;
   height: 100%;
+  min-height: 0;
+  border-radius: 1.5rem;
+  outline: none;
+  touch-action: none;
+  cursor: grab;
+  -webkit-tap-highlight-color: transparent;
 }
+.controller-fader:focus-visible .controller-fader__handle { outline: 2px solid #f2f0e9; outline-offset: 4px; }
+.controller-fader.is-dragging { cursor: grabbing; }
 
-.controller-slider {
+.controller-fader__rail {
   position: absolute;
-  top: 50%;
+  top: 2rem;
+  bottom: 2rem;
   left: 50%;
-  width: 100cqh;
-  height: clamp(4.4rem, 11vw, 7rem);
-  margin: 0;
-  transform: translate(-50%, -50%) rotate(-90deg);
-  -webkit-appearance: none;
-  appearance: none;
+  width: 24px;
+  transform: translateX(-50%);
+  background: #080d0b;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  box-shadow: inset 0 2px 7px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+.controller-fader__fill {
+  position: absolute;
+  inset: auto 0 0;
+  height: var(--fader-fill);
+  background: var(--finger-color);
+  border-radius: inherit;
+  opacity: 0.28;
+}
+.controller-fader__handle {
+  position: absolute;
+  top: var(--fader-position);
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 64px;
+  transform: translate(-50%, -50%);
+  background: var(--finger-color);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 18px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.controller-fader__grip {
+  width: 30px;
+  height: 8px;
+  border-top: 2px solid rgba(8, 13, 11, 0.4);
+  border-bottom: 2px solid rgba(8, 13, 11, 0.4);
+}
+
+.controller-secondary {
+  min-height: 3rem;
+  padding: 0.65rem 1.1rem;
+  color: var(--ink-dim);
   background: transparent;
-}
-
-.controller-slider::-webkit-slider-runnable-track {
-  height: clamp(1.1rem, 2.6vw, 1.8rem);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.controller-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: clamp(4.4rem, 11vw, 7rem);
-  height: clamp(4.4rem, 11vw, 7rem);
-  /* 트랙 두께와 썸 지름의 차이를 반씩 위로 올려 가운데를 맞춘다 */
-  margin-top: calc((clamp(1.1rem, 2.6vw, 1.8rem) - clamp(4.4rem, 11vw, 7rem)) / 2);
-  border: none;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 2.4rem rgba(126, 200, 255, 0.55);
-}
-
-.controller-slider::-moz-range-track {
-  height: clamp(1.1rem, 2.6vw, 1.8rem);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.controller-slider::-moz-range-thumb {
-  width: clamp(4.4rem, 11vw, 7rem);
-  height: clamp(4.4rem, 11vw, 7rem);
-  border: none;
-  border-radius: 50%;
-  background: var(--accent);
-}
-
-.controller-quick {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.controller-quick button {
-  padding: 1.1rem 1.6rem;
-  font-size: clamp(0.95rem, 2.2vh, 1.3rem);
-  background: rgba(126, 200, 255, 0.12);
   border: 1px solid var(--line);
   border-radius: 999px;
 }
 
-.controller-quick button:active { background: rgba(126, 200, 255, 0.3); }
+.controller-primary {
+  min-height: 3.5rem;
+  padding: 0.8rem 1.5rem;
+  color: var(--bg);
+  font-weight: 700;
+  background: var(--accent);
+  border: 0;
+  border-radius: 999px;
+}
 
-.controller-status { margin: 0; font-size: clamp(0.85rem, 2vh, 1.1rem); }
-.controller-status.is-online { color: var(--ink-faint); }
-.controller-status.is-offline { color: var(--danger); }
+.controller-queue-number {
+  font-size: clamp(5rem, 28vw, 9rem);
+  font-weight: 200;
+  line-height: 0.9;
+  color: var(--accent);
+}
 
-.controller-error { display: grid; gap: 1rem; place-items: center; height: 100%; align-content: center; }
+.controller-subtle { color: var(--ink-faint) !important; font-size: 0.9rem; }
+
+.controller-loader {
+  width: 3.5rem;
+  aspect-ratio: 1;
+  border: 3px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: controller-spin 0.9s linear infinite;
+}
+
+@keyframes controller-spin { to { transform: rotate(360deg); } }
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .controller-screen--control {
+    width: min(100%, 45rem);
+    grid-template-columns: minmax(6rem, 0.4fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .controller-name { align-self: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .controller-loader { animation: none; }
+}
+
+/* 관객 입장용 QR 안내 화면 */
+.join-qr-screen {
+  display: grid;
+  gap: clamp(1.5rem, 3vh, 3rem);
+  align-content: center;
+  min-height: 100%;
+  padding: clamp(1rem, 3vw, 4rem);
+  text-align: center;
+}
+
+.join-qr-kicker {
+  margin: 0 0 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+}
+
+.join-qr-header h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 4rem);
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+}
+
+.join-qr-header > p:not(.join-qr-kicker) {
+  margin: 1rem 0 0;
+  font-size: clamp(0.9rem, 1.3vw, 1.25rem);
+  line-height: 1.55;
+  color: var(--ink-dim);
+}
+
+.join-qr-count {
+  margin: 0.75rem 0;
+  font-size: 1rem;
+  color: var(--accent-warm);
+}
+
+.join-qr-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(0.75rem, 1.5vw, 2rem);
+}
+
+.join-qr-card {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: clamp(0.65rem, 1.3vw, 1.5rem);
+  justify-items: center;
+  align-content: start;
+  color: var(--ink);
+  text-decoration: none;
+  background: #111918;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+}
+.join-qr-card h2 { margin: 0; font-size: clamp(1.25rem, 2vw, 2rem); color: var(--finger-color); }
+.join-qr-card:focus-visible { outline: 2px solid var(--finger-color); outline-offset: 4px; }
+.join-qr-card__status { font-size: clamp(0.7rem, 1vw, 0.95rem); color: var(--ink-dim); }
+
+.join-qr-code__box {
+  width: min(100%, 16rem);
+  padding: 0.35rem;
+  background: #fff;
+  border-radius: 0.6rem;
+}
+
+.join-qr-code__box svg { display: block; width: 100%; height: auto; }
+.join-qr-footer > p:first-child { margin: 0; color: var(--ink-dim); }
+
+@media (max-width: 1100px) {
+  .join-qr-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+  .join-qr-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
 /* ------------------------------------------------------------------ */
 /* 운영 모니터                                                          */

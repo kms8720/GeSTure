@@ -4,6 +4,8 @@ import {
   FINGER_LABELS,
   FINGER_ORDER,
   HandState,
+  NetworkInfo,
+  ParticipationSummary,
   PoseClass,
   RecognitionState
 } from '../socket/types';
@@ -11,6 +13,7 @@ import {
 type MonitorProps = {
   handState: HandState;
   controllerState: ControllerState;
+  participationSummary: ParticipationSummary;
   recognitionState: RecognitionState;
   poseClasses: PoseClass[];
   serverOnline: boolean;
@@ -22,11 +25,15 @@ type MonitorProps = {
  * ACC 버전에서 미구현으로 남아 있던 reset과 강제 확정 버튼을 여기 넣었다.
  * 관객이 손 모양을 다 채우지 않고 떠났을 때 운영자가 끊어줄 수단이 필요하다.
  */
-export default function Monitor({ handState, controllerState, recognitionState, poseClasses, serverOnline }: MonitorProps)
+export default function Monitor({ handState, controllerState, participationSummary, recognitionState, poseClasses, serverOnline }: MonitorProps)
 {
   const { current, slots, slotsNeeded, correction, words, correcting, note, updatedAt } = recognitionState;
   const [busy, setBusy] = useState(false);
   const [health, setHealth] = useState<string>('확인 중');
+  const [operatorToken, setOperatorToken] = useState('');
+  const [authorized, setAuthorized] = useState(false);
+  const [error, setError] = useState('');
+  const [network, setNetwork] = useState<NetworkInfo | null>(null);
 
   useEffect(() =>
   {
@@ -34,14 +41,29 @@ export default function Monitor({ handState, controllerState, recognitionState, 
       .then((response) => response.json())
       .then((data) => setHealth(`포즈 클래스 ${data.poseClasses}개, 포트 ${data.port}`))
       .catch((error) => setHealth(`확인 실패: ${error}`));
-  }, []);
+    fetch('/network-info').then((response) => response.json()).then(setNetwork).catch(() => setNetwork(null));
+  }, [serverOnline]);
 
   const post = async (url: string): Promise<void> =>
   {
     setBusy(true);
+    setError('');
     try
     {
-      await fetch(url, { method: 'POST' });
+      const response = await fetch(url, {
+        method: 'POST', headers: { Authorization: `Bearer ${operatorToken}` }
+      });
+      const result = await response.json();
+      if (!response.ok)
+      {
+        if (response.status === 401 || response.status === 503) setAuthorized(false);
+        throw new Error(result.error ?? `요청 실패 (${response.status})`);
+      }
+      if (url === '/operator/session') setAuthorized(true);
+    }
+    catch (error)
+    {
+      setError((error as Error).message);
     }
     finally
     {
@@ -54,17 +76,38 @@ export default function Monitor({ handState, controllerState, recognitionState, 
       <header className="monitor__head">
         <h1>운영 모니터</h1>
         <div className="monitor__actions">
-          <button type="button" disabled={busy} onClick={() => post('/recognition/reset')}>초기화</button>
-          <button type="button" disabled={busy || slots.length === 0} onClick={() => post('/recognition/finalize')}>
+          <button type="button" disabled={busy || !authorized || !serverOnline} onClick={() => post('/recognition/reset')}>초기화</button>
+          <button type="button" disabled={busy || !authorized || !serverOnline || correcting || slots.length === 0} onClick={() => post('/recognition/finalize')}>
             지금까지로 단어 만들기
           </button>
+          <button type="button" disabled={busy || !authorized || !serverOnline || (!correction && !correcting)} onClick={() => post('/recognition/hide-word')}>지금 단어 내리기</button>
         </div>
         <span className={`monitor__status ${serverOnline ? 'is-online' : 'is-offline'}`}>
           {serverOnline ? 'ONLINE' : 'OFFLINE'}
         </span>
       </header>
 
-      <p className="monitor__health">{health} · 마지막 갱신 {updatedAt || '-'}</p>
+      {!authorized ? (
+        <form className="monitor__login" onSubmit={(event) => { event.preventDefault(); void post('/operator/session'); }}>
+          <label htmlFor="operator-key">운영자 키</label>
+          <input id="operator-key" type="password" autoComplete="current-password" value={operatorToken}
+            onChange={(event) => setOperatorToken(event.target.value)} required />
+          <button disabled={busy || !serverOnline} type="submit">운영 기능 열기</button>
+          <span>전시 서버의 .env에 설정한 키를 입력합니다.</span>
+        </form>
+      ) : <button type="button" onClick={() => { setAuthorized(false); setOperatorToken(''); }}>운영 기능 잠그기</button>}
+      {error && <p className="monitor__error" role="alert">{error}</p>}
+
+      <p className="monitor__health">
+        {health} · 참여 {participationSummary.connectedCount}명 · 점유 {participationSummary.occupiedCount}/5
+        {' · '}대기 {participationSummary.waitingCount}명 · 마지막 갱신 {updatedAt || '-'}
+      </p>
+      <p className="monitor__health">
+        참여 주소: {network?.joinUrl ?? '설정 필요'} · Wi-Fi: {network?.wifiSsid || '설정 필요'}
+        {' · '}<a href="/join/qr" target="_blank" rel="noreferrer">QR 안내판</a>
+        {' · '}<a href="/check" target="_blank" rel="noreferrer">휴대폰 연결 점검</a>
+      </p>
+      {network?.warning && <p className="monitor__error">{network.warning}</p>}
 
       <section className="monitor__grid">
         <div className="monitor__card">
@@ -75,7 +118,22 @@ export default function Monitor({ handState, controllerState, recognitionState, 
                 <tr key={finger}>
                   <td>{FINGER_LABELS[finger]}</td>
                   <td className="num">{handState[finger]}</td>
-                  <td>{controllerState[finger] ? '조종기 연결' : '조종기 없음'}</td>
+                  <td>{{
+                    available: '빈 자리',
+                    connected: '관객 연결',
+                    reconnecting: '재접속 대기'
+                  }[controllerState[finger].status]}</td>
+                  <td>
+                    {controllerState[finger].status !== 'available' && (
+                      <button
+                        type="button"
+                        disabled={busy || !authorized || !serverOnline}
+                        onClick={() => post(`/participants/${finger}/release`)}
+                      >
+                        자리 반환
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

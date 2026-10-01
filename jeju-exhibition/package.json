@@ -9,14 +9,19 @@
     "dev:client": "vite --host 0.0.0.0",
     "build": "vite build",
     "start": "tsx server/index.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "test": "tsx --test server/*.test.ts",
+    "setup": "node scripts/setup-exhibition.mjs",
+    "check:network": "tsx scripts/check-network.ts"
   },
+  "engines": { "node": ">=22.18.0" },
   "dependencies": {
     "@react-three/drei": "latest",
     "@react-three/fiber": "latest",
     "@vitejs/plugin-react": "latest",
     "concurrently": "latest",
     "express": "latest",
+    "qrcode.react": "^4.2.0",
     "react": "latest",
     "react-dom": "latest",
     "react-router-dom": "latest",

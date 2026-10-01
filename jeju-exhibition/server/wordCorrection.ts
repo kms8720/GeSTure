@@ -35,6 +35,20 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'qwen2.5:7b-instruct';
  * 전시 중 모델이 언로드될 수 있으므로 여유를 둔다.
  */
 const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS ?? 20000);
+const WORD_DEADLINE_MS = Number(process.env.WORD_DEADLINE_MS ?? 20000);
+export const EXHIBITION_STRICT = process.env.EXHIBITION_STRICT !== '0';
+const BLOCKED_WORD_PARTS = ['씨발', '시발', '개새끼', '병신', '지랄'];
+
+export function isAllowedOutput(word: string): boolean
+{
+  return isValidKoreanWord(word) && !BLOCKED_WORD_PARTS.some((part) => word.includes(part)) &&
+    (!EXHIBITION_STRICT || VOCABULARY.includes(word));
+}
+
+if (![OLLAMA_TIMEOUT_MS, WORD_DEADLINE_MS].every((value) => Number.isFinite(value) && value > 0))
+{
+  throw new Error('OLLAMA_TIMEOUT_MS / WORD_DEADLINE_MS는 양수여야 합니다.');
+}
 
 // ---------------------------------------------------------------------------
 // 결정론적 대체 경로: 후보 자모로 덮을 수 있는 단어를 단어장에서 찾는다
@@ -114,6 +128,7 @@ export type VocabularyMatch = {
 export function matchVocabulary(slots: JamoSlot[], limit = 5): VocabularyMatch[]
 {
   return VOCABULARY
+    .filter(isAllowedOutput)
     .map((word) =>
     {
       const jamo = decomposeWord(word);
@@ -170,7 +185,7 @@ ${describeSlots(slots)}
 ${options}
 
 후보 중 하나를 고르되, 손 모양을 많이 쓰면서 뜻이 통하는 것을 우선하라.
-모두 어색하면 위 자모로 설명되는 다른 실제 한국어 일상 단어를 써도 된다. 단어를 지어내지 마라.
+${EXHIBITION_STRICT ? '전시 모드다. 반드시 위 후보 단어 중 하나를 골라라. 목록 밖 단어는 출력하지 마라.' : '모두 어색하면 위 자모로 설명되는 다른 실제 한국어 일상 단어를 써도 된다. 단어를 지어내지 마라.'}
 1~4글자 완성형 한글만. 지명·인명·고유명사·전문용어 금지.
 
 JSON만 출력:
@@ -252,10 +267,14 @@ function validatePayload(value: unknown, slots: JamoSlot[]): LlmPayload
   return { correctedWord, chosenJamo };
 }
 
-async function requestOllama(prompt: string): Promise<unknown>
+async function requestOllama(prompt: string, deadline: number, signal?: AbortSignal): Promise<unknown>
 {
+  const remaining = Math.min(OLLAMA_TIMEOUT_MS, deadline - Date.now());
+  if (remaining <= 0 || signal?.aborted) throw new DOMException('단어 생성 시간 제한 또는 취소', 'AbortError');
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
+  const abort = (): void => controller.abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  const timer = setTimeout(abort, remaining);
 
   try
   {
@@ -293,6 +312,7 @@ async function requestOllama(prompt: string): Promise<unknown>
   finally
   {
     clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
   }
 }
 
@@ -307,7 +327,7 @@ export async function warmUpOllama(): Promise<{ ok: boolean; elapsedMs: number; 
 {
   const startedAt = Date.now();
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 120000);
+  const timer = setTimeout(() => controller.abort(), WORD_DEADLINE_MS);
 
   try
   {
@@ -327,6 +347,19 @@ export async function warmUpOllama(): Promise<{ ok: boolean; elapsedMs: number; 
         ]
       })
     });
+
+    if (response.ok)
+    {
+      const data = await response.json() as { message?: { content?: unknown } };
+      if (typeof data.message?.content !== 'string' || !data.message.content.trim())
+      {
+        throw new Error('Ollama 예열 응답이 비어 있습니다.');
+      }
+    }
+    else
+    {
+      await response.body?.cancel();
+    }
 
     return {
       ok: response.ok,
@@ -356,7 +389,7 @@ export async function warmUpOllama(): Promise<{ ok: boolean; elapsedMs: number; 
  * Ollama가 먼저이고, 실패하면 단어장 대체 경로로 넘어간다. 대체 경로는 네트워크를
  * 타지 않으므로 전시 중 LLM이 죽어도 화면은 계속 단어를 낸다.
  */
-export async function correctWord(slots: JamoSlot[]): Promise<WordCorrection>
+export async function correctWord(slots: JamoSlot[], options: { signal?: AbortSignal } = {}): Promise<WordCorrection>
 {
   const startedAt = Date.now();
   const slotSummary = summarizeSlots(slots);
@@ -366,39 +399,50 @@ export async function correctWord(slots: JamoSlot[]): Promise<WordCorrection>
 
   const finish = (
     partial: Pick<WordCorrection, 'chosenJamo' | 'correctedWord' | 'candidates' | 'note' | 'source' | 'status'>
-  ): WordCorrection => ({
-    slots,
-    slotSummary,
-    composedText: composeJamo(partial.chosenJamo),
-    model: OLLAMA_MODEL,
-    elapsedMs: Date.now() - startedAt,
-    ...partial
-  });
+  ): WordCorrection =>
+  {
+    // LLM과 단어장 어느 경로도 마지막 출력 관문을 우회할 수 없다.
+    const allowed = isAllowedOutput(partial.correctedWord);
+    return {
+      slots, slotSummary, model: OLLAMA_MODEL, elapsedMs: Date.now() - startedAt,
+      ...partial,
+      correctedWord: allowed ? partial.correctedWord : '',
+      chosenJamo: allowed ? partial.chosenJamo : [],
+      composedText: allowed ? composeJamo(partial.chosenJamo) : '',
+      candidates: partial.candidates.filter(isAllowedOutput),
+      source: allowed ? partial.source : 'none'
+    };
+  };
+
+  const fallback = (note: string, status: WordCorrection['status'] = 'ok'): WordCorrection =>
+  {
+    const best = vocabularyMatches[0];
+    return finish({
+      chosenJamo: best?.jamo ?? [], correctedWord: best?.word ?? '',
+      candidates: vocabularyMatches.map((entry) => entry.word), note,
+      source: best ? 'vocabulary' : 'none', status
+    });
+  };
 
   try
   {
-    const payload = validatePayload(await requestOllama(buildPrompt(slots, vocabularyMatches)), slots);
+    const deadline = startedAt + WORD_DEADLINE_MS;
+    const payload = validatePayload(await requestOllama(buildPrompt(slots, vocabularyMatches), deadline, options.signal), slots);
     const onShortlist = vocabularyMatches.some((entry) => entry.word === payload.correctedWord);
     const inVocabulary = onShortlist || VOCABULARY.includes(payload.correctedWord);
 
-    if (!inVocabulary)
+    if (!isAllowedOutput(payload.correctedWord))
     {
-      const verdict = await requestOllama(buildRealWordCheckPrompt(payload.correctedWord)) as { isRealWord?: unknown };
+      return fallback('전시 출력 기준에 맞지 않는 결과를 단어장으로 대체했다');
+    }
+
+    if (!inVocabulary && !EXHIBITION_STRICT)
+    {
+      const verdict = await requestOllama(buildRealWordCheckPrompt(payload.correctedWord), deadline, options.signal) as { isRealWord?: unknown };
 
       if (verdict?.isRealWord !== true)
       {
-        const best = vocabularyMatches[0];
-        if (best !== undefined)
-        {
-          return finish({
-            chosenJamo: best.jamo,
-            correctedWord: best.word,
-            candidates: vocabularyMatches.map((entry) => entry.word),
-            note: `LLM이 제안한 "${payload.correctedWord}"가 실재 단어 검사를 통과하지 못해 단어장에서 골랐다`,
-            source: 'vocabulary',
-            status: 'ok'
-          });
-        }
+        return fallback('실재 단어 검사를 통과하지 못해 단어장에서 골랐다');
       }
     }
 
@@ -421,31 +465,10 @@ export async function correctWord(slots: JamoSlot[]): Promise<WordCorrection>
   }
   catch (error)
   {
-    const best = vocabularyMatches[0];
     const aborted = error instanceof Error && error.name === 'AbortError';
     const unreachable = aborted || String(error).includes('ECONNREFUSED') || error instanceof TypeError;
 
-    if (best === undefined)
-    {
-      return finish({
-        chosenJamo: [],
-        correctedWord: '',
-        candidates: [],
-        note: `LLM 실패, 단어장에서도 후보를 찾지 못했다: ${error}`,
-        source: 'none',
-        status: unreachable ? 'unavailable' : 'error'
-      });
-    }
-
-    return finish({
-      chosenJamo: best.jamo,
-      correctedWord: best.word,
-      candidates: vocabularyMatches.map((entry) => entry.word),
-      note: aborted
-        ? `Ollama 응답이 ${OLLAMA_TIMEOUT_MS}ms를 넘겨 단어장으로 대체했다 (손 모양 ${best.matched}개 사용, 덮인 비율 ${Math.round(best.coverage * 100)}%)`
-        : `LLM 실패로 단어장으로 대체했다 (손 모양 ${best.matched}개 사용, 덮인 비율 ${Math.round(best.coverage * 100)}%): ${error}`,
-      source: 'vocabulary',
-      status: unreachable ? 'unavailable' : 'error'
-    });
+    return fallback(aborted ? '단어 생성 시간 제한 또는 취소로 단어장에서 골랐다' :
+      'LLM을 사용할 수 없어 단어장에서 골랐다', unreachable ? 'unavailable' : 'error');
   }
 }

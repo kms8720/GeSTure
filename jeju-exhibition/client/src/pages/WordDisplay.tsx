@@ -20,7 +20,7 @@ export default function WordDisplay({ recognitionState, serverOnline }: WordDisp
 {
   const { current, slots, slotsNeeded, correction, words, correcting, note } = recognitionState;
   const latestWord = correction?.correctedWord ?? '';
-  const history = words.slice(0, -1).slice(-14);
+  const history = (latestWord ? words.slice(0, -1) : words).slice(-14);
 
   return (
     <div className="word-screen">
@@ -57,6 +57,10 @@ export default function WordDisplay({ recognitionState, serverOnline }: WordDisp
       <section className={`word-main ${correcting ? 'is-working' : ''}`}>
         {correcting ? (
           <p className="word-main__working">모인 손 모양으로 단어를 찾는 중</p>
+        ) : slots.length > 0 ? (
+          <p className="word-main__waiting" aria-live="polite">
+            손 모양 {slots.length}개 기록 · {Math.max(0, slotsNeeded - slots.length)}개 더 모으면 단어가 됩니다
+          </p>
         ) : latestWord ? (
           <>
             <strong className="word-main__word">{latestWord}</strong>

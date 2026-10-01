@@ -13,7 +13,7 @@ export const FINGER_LABELS: Record<FingerName, string> = {
   pinky: '소지'
 };
 
-/** 조종기 디스플레이 5대에 붙일 번호. 전시장에서 화면마다 붙여둘 표식이다 */
+/** 관객에게 배정된 손가락을 빠르게 구분하는 번호 */
 export const FINGER_STATION: Record<FingerName, number> = {
   thumb: 1,
   index: 2,
@@ -76,14 +76,54 @@ export type RecognitionState = {
   updatedAt: string;
 };
 
-export type ControllerState = Record<FingerName, boolean>;
+export type ControllerSlotState = {
+  status: 'available' | 'connected' | 'reconnecting';
+  reconnectDeadline: string | null;
+};
+
+export type ControllerState = Record<FingerName, ControllerSlotState>;
+
+export type ParticipationSummary = {
+  connectedCount: number;
+  occupiedCount: number;
+  waitingCount: number;
+};
+
+export type NetworkInfo = {
+  port: number;
+  addresses: string[];
+  publicOrigin: string | null;
+  joinUrl: string | null;
+  checkUrl: string | null;
+  configured: boolean;
+  wifiSsid: string;
+  wifiPassword: string;
+  warning: string;
+};
+
+export type ParticipantState = {
+  status: 'assigned' | 'waiting' | 'released';
+  finger: FingerName | null;
+  queuePosition: number | null;
+  summary: ParticipationSummary;
+};
 
 export const INITIAL_HAND_STATE: HandState = {
   thumb: 100, index: 100, middle: 100, ring: 100, pinky: 100
 };
 
 export const INITIAL_CONTROLLER_STATE: ControllerState = {
-  thumb: false, index: false, middle: false, ring: false, pinky: false
+  thumb: { status: 'available', reconnectDeadline: null },
+  index: { status: 'available', reconnectDeadline: null },
+  middle: { status: 'available', reconnectDeadline: null },
+  ring: { status: 'available', reconnectDeadline: null },
+  pinky: { status: 'available', reconnectDeadline: null }
+};
+
+export const INITIAL_PARTICIPATION_SUMMARY: ParticipationSummary = {
+  connectedCount: 0,
+  occupiedCount: 0,
+  waitingCount: 0
 };
 
 export const INITIAL_RECOGNITION_STATE: RecognitionState = {
