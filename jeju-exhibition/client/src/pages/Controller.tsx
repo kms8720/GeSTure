@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { socket } from '../socket/socket';
+import FingerSlider from '../components/FingerSlider';
 import {
   FINGER_LABELS,
-  FINGER_STATION,
   HandState,
   ParticipantState
 } from '../socket/types';
@@ -13,7 +13,6 @@ type ControllerProps = {
 };
 
 const SESSION_KEY = 'gesture-jeju-participant';
-const STEPS = [0, 25, 50, 75, 100] as const;
 
 function createToken(): string
 {
@@ -185,49 +184,8 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
 
   return (
     <main className={`controller-screen controller-screen--control controller-screen--${finger}`}>
-      <header className="controller-header">
-        <div className="controller-station" aria-label={`${FINGER_STATION[finger]}번 손가락`}>
-          {FINGER_STATION[finger]}
-        </div>
-        <div>
-          <p className="controller-kicker">당신이 움직이는 손가락</p>
-          <h1 className="controller-name">{FINGER_LABELS[finger]}</h1>
-        </div>
-      </header>
-
-      <section className="controller-controls" aria-label={`${FINGER_LABELS[finger]} 굽힘 단계`}>
-        {STEPS.map((step) => (
-          <button
-            key={step}
-            className={`controller-step ${Math.abs(value - step) < 13 ? 'is-current' : ''}`}
-            type="button"
-            aria-pressed={Math.abs(value - step) < 13}
-            onClick={() => send(step)}
-          >
-            <strong>{step}</strong>
-            <span>{step === 0 ? '접기' : step === 100 ? '펴기' : `${step}%`}</span>
-          </button>
-        ))}
-      </section>
-
-      <label className="controller-fine">
-        <span>미세 조정</span>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          step={1}
-          value={value}
-          onChange={(event) => send(Number(event.target.value))}
-        />
-        <output>{value}</output>
-      </label>
-
-      <p className={`controller-status ${serverOnline ? 'is-online' : 'is-offline'}`} aria-live="polite">
-        {serverOnline ? '손과 연결되어 있습니다' : '다시 연결하고 있습니다'}
-      </p>
-      <p className="controller-subtle">지금 {participant.summary.connectedCount}명 참여 중 · 빈 자리 {5 - participant.summary.occupiedCount}개</p>
-      <button className="controller-leave" type="button" onClick={leave}>참여 마치기</button>
+      <h1 id="controller-finger-name" className="controller-name">{FINGER_LABELS[finger]}</h1>
+      <FingerSlider value={value} onChange={send} />
     </main>
   );
 }
