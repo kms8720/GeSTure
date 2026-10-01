@@ -109,3 +109,70 @@ test('disconnected waiters retain order on reconnect and are skipped during prom
   assert.equal(sessions.release('token-1').promotedToken, 'token-5');
   assert.equal(sessions.release('token-2').promotedToken, 'token-7');
 });
+
+test('finger QR requests assign the exact finger regardless of arrival order', () =>
+{
+  const sessions = new ParticipantSessions();
+  const fingers = ['pinky', 'ring', 'middle', 'index', 'thumb'] as const;
+  fingers.forEach((finger) => assert.equal(sessions.join(finger, `socket-${finger}`, finger).state.finger, finger));
+  assert.equal(sessions.getSummary().occupiedCount, 5);
+});
+
+test('a finger-specific waiter waits for that finger even when other fingers are free', () =>
+{
+  const sessions = new ParticipantSessions();
+  sessions.join('owner', 'owner-socket', 'thumb');
+  const waiting = sessions.join('waiting', 'waiting-socket', 'thumb').state;
+  assert.equal(waiting.status, 'waiting');
+  assert.equal(waiting.finger, null);
+  assert.equal(sessions.getControllerState().index.status, 'available');
+  sessions.join('index-owner', 'index-owner-socket', 'index');
+  assert.equal(sessions.release('index-owner').promotedToken, null);
+  assert.equal(sessions.release('owner').promotedToken, 'waiting');
+  assert.equal(sessions.getState('waiting').finger, 'thumb');
+});
+
+test('queue positions and promotion are scoped to the requested finger', () =>
+{
+  const sessions = new ParticipantSessions();
+  sessions.join('thumb-owner', 'thumb-owner-socket', 'thumb');
+  sessions.join('index-owner', 'index-owner-socket', 'index');
+  sessions.join('thumb-a', 'thumb-a-socket', 'thumb');
+  sessions.join('index-a', 'index-a-socket', 'index');
+  sessions.join('thumb-b', 'thumb-b-socket', 'thumb');
+  assert.equal(sessions.getState('thumb-a').queuePosition, 1);
+  assert.equal(sessions.getState('index-a').queuePosition, 1);
+  assert.equal(sessions.getState('thumb-b').queuePosition, 2);
+  assert.equal(sessions.release('index-owner').promotedToken, 'index-a');
+  assert.equal(sessions.getState('thumb-a').status, 'waiting');
+  assert.equal(sessions.release('thumb-owner').promotedToken, 'thumb-a');
+  assert.equal(sessions.getState('thumb-b').queuePosition, 1);
+});
+
+test('scanning another finger QR transfers one session and promotes the old finger queue', () =>
+{
+  const sessions = new ParticipantSessions();
+  sessions.join('owner', 'old-socket', 'thumb');
+  sessions.join('waiting', 'waiting-socket', 'thumb');
+  const changed = sessions.join('owner', 'new-socket', 'pinky');
+  assert.equal(changed.releasedFinger, 'thumb');
+  assert.equal(changed.replacedSocketId, 'old-socket');
+  assert.equal(changed.state.finger, 'pinky');
+  assert.equal(sessions.getState('waiting').finger, 'thumb');
+  assert.equal(sessions.getSummary().occupiedCount, 2);
+  assert.equal(sessions.getAssignedFinger('owner', 'old-socket'), null);
+  sessions.disconnect('old-socket', 1000);
+  assert.equal(sessions.getAssignedFinger('owner', 'new-socket'), 'pinky');
+});
+
+test('requesting the current auto-assigned finger keeps ownership and a new QR changes a waiting preference', () =>
+{
+  const sessions = new ParticipantSessions();
+  sessions.join('owner', 'owner-socket');
+  sessions.join('waiting', 'waiting-socket', 'thumb');
+  assert.equal(sessions.join('owner', 'owner-socket', 'thumb').releasedFinger, null);
+  assert.equal(sessions.getState('owner').finger, 'thumb');
+  assert.equal(sessions.getState('waiting').status, 'waiting');
+  assert.equal(sessions.join('waiting', 'waiting-socket', 'middle').state.finger, 'middle');
+  assert.equal(sessions.getSummary().waitingCount, 0);
+});

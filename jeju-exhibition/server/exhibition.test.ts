@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { spawn, ChildProcess } from 'node:child_process';
 import test, { before, after, beforeEach, afterEach } from 'node:test';
 import { io, Socket } from 'socket.io-client';
-import { FINGERS, POSE_CLASSES } from './poseClasses.js';
+import { FINGERS, POSE_CLASSES, type Finger } from './poseClasses.js';
 import type { ParticipantState, ParticipationSummary } from './participantSessions.js';
 
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -64,13 +64,13 @@ async function stopApp(): Promise<void>
   appProcess.kill('SIGTERM'); await exited;
 }
 
-async function connectParticipant(index: number, reconnect = false): Promise<Socket>
+async function connectParticipant(index: number, reconnect = false, finger?: Finger): Promise<Socket>
 {
   const socket = io(url, { autoConnect: false, transports: ['websocket'], reconnection: reconnect, reconnectionDelay: 100 });
   sockets.push(socket);
   socket.on('participant:state', (next) => states.set(socket, next));
   socket.on('participation:summary', (next) => summaries.set(socket, next));
-  socket.on('connect', () => socket.emit('participant:join', { token: `integration-token-${index}` }));
+  socket.on('connect', () => socket.emit('participant:join', { token: `integration-token-${index}`, finger }));
   socket.connect(); await until(() => states.has(socket)); return socket;
 }
 
@@ -303,4 +303,38 @@ test('network metadata honors the configured address and never discloses the ope
   assert.equal(result.wifiSsid, 'GeSTure-test'); assert.equal(result.configured, true);
   assert.ok(!JSON.stringify(result).includes(key));
   assert.equal((await post('/hand-state', { thumb: 'NaN' })).status, 400);
+});
+
+test('specific QR requests wait for their own finger and a rescan resets and transfers the old role', async () =>
+{
+  const owner = await connectParticipant(100, false, 'thumb');
+  const waiter = await connectParticipant(101, false, 'thumb');
+  assert.equal(states.get(waiter)?.status, 'waiting');
+  assert.equal(states.get(waiter)?.queuePosition, 1);
+  owner.emit('finger:update', { value: 0 });
+  await until(async () => (await hand()).thumb === 0);
+  owner.emit('participant:join', { token: 'integration-token-100', finger: 'ring' });
+  await until(() => states.get(owner)?.finger === 'ring' && states.get(waiter)?.finger === 'thumb');
+  assert.equal((await hand()).thumb, 100);
+  assert.equal(summaries.get(owner)?.occupiedCount, 2);
+  owner.emit('finger:update', { finger: 'thumb', value: 25 });
+  await until(async () => (await hand()).ring === 25);
+  assert.equal((await hand()).thumb, 100);
+  let error = '';
+  owner.once('participant:error', (next) => { error = next.message; });
+  owner.emit('participant:join', { token: 'integration-token-100', finger: 'unknown' });
+  await until(() => error.length > 0);
+  assert.equal(states.get(owner)?.finger, 'ring');
+});
+
+test('five chosen QR roles are preserved through reconnect and server restart', async () =>
+{
+  const requested = [...FINGERS].reverse();
+  const clients: Socket[] = [];
+  for (let i = 0; i < requested.length; i++) clients.push(await connectParticipant(200 + i, true, requested[i]));
+  assert.deepEqual(clients.map((client) => states.get(client)?.finger), requested);
+  await stopApp(); await until(() => clients.every((client) => !client.connected));
+  states.clear(); await startApp();
+  await until(() => clients.every((client) => client.connected && states.has(client)), 8000);
+  assert.deepEqual(clients.map((client) => states.get(client)?.finger), requested);
 });

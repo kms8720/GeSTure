@@ -34,19 +34,19 @@ button {
 .monitor__error { color: var(--danger); }
 .connection-check { max-width: 42rem; padding: 2rem; margin: auto; font-size: 1.1rem; line-height: 1.6; }
 .connection-check a, .connection-check button { display: inline-block; margin: 0.5rem; padding: 1rem; min-height: 48px; }
-.join-qr-wifi { padding: 1rem; border: 1px solid var(--line); }
-.join-qr-wifi p { margin: 0.5rem 0; overflow-wrap: anywhere; }
-.join-qr-wifi svg { background: white; padding: 8px; width: 136px; height: 136px; }
+.join-qr-wifi { display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; overflow-wrap: anywhere; }
 .join-qr-no-print { margin-right: 1rem; padding: 0.7rem; }
 
 @media print {
   @page { size: A4 landscape; margin: 15mm; }
   html, body, #root, .join-qr-screen { height: auto !important; background: white !important; color: #111 !important; }
-  .join-qr-screen { min-height: 0 !important; padding: 0 !important; grid-template-columns: 1fr 1fr !important; }
-  .join-qr-screen p, .join-qr-screen li, .join-qr-screen strong, .join-qr-screen span { color: #111 !important; }
-  .join-qr-copy h1 { font-size: 30pt !important; }
-  .join-qr-code__box { box-shadow: none !important; padding: 10px !important; }
-  .join-qr-no-print, .join-qr-count { display: none !important; }
+  .join-qr-screen { min-height: 0 !important; padding: 0 !important; }
+  .join-qr-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 4mm !important; }
+  .join-qr-screen p, .join-qr-screen h1, .join-qr-screen h2, .join-qr-screen span { color: #111 !important; }
+  .join-qr-header h1 { font-size: 26pt !important; }
+  .join-qr-card { padding: 3mm !important; background: white !important; border-color: #aaa !important; break-inside: avoid; }
+  .join-qr-code__box { box-shadow: none !important; padding: 0 !important; }
+  .join-qr-no-print, .join-qr-count, .join-qr-card__status { display: none !important; }
 }
 
 /* ------------------------------------------------------------------ */
@@ -255,11 +255,11 @@ button {
   --finger-color: var(--accent);
 }
 
-.controller-screen--thumb { --finger-color: #ffb86b; }
-.controller-screen--index { --finger-color: #70d6ff; }
-.controller-screen--middle { --finger-color: #ae9cff; }
-.controller-screen--ring { --finger-color: #ff8fbe; }
-.controller-screen--pinky { --finger-color: #7ee2a8; }
+.controller-screen--thumb, .join-qr-card--thumb { --finger-color: #ffb86b; }
+.controller-screen--index, .join-qr-card--index { --finger-color: #70d6ff; }
+.controller-screen--middle, .join-qr-card--middle { --finger-color: #ae9cff; }
+.controller-screen--ring, .join-qr-card--ring { --finger-color: #ff8fbe; }
+.controller-screen--pinky, .join-qr-card--pinky { --finger-color: #7ee2a8; }
 
 .controller-screen--control {
   grid-template-rows: auto minmax(0, 1fr);
@@ -410,67 +410,78 @@ button {
 /* 관객 입장용 QR 안내 화면 */
 .join-qr-screen {
   display: grid;
-  grid-template-columns: minmax(20rem, 1.15fr) minmax(22rem, 0.85fr);
-  gap: clamp(2rem, 6vw, 7rem);
-  align-items: center;
+  gap: clamp(1.5rem, 3vh, 3rem);
+  align-content: center;
   min-height: 100%;
-  padding: clamp(2rem, 6vw, 7rem);
+  padding: clamp(1rem, 3vw, 4rem);
+  text-align: center;
 }
 
 .join-qr-kicker {
-  margin: 0 0 1.25rem;
+  margin: 0 0 0.8rem;
   font-weight: 700;
   letter-spacing: 0.16em;
   color: var(--accent);
 }
 
-.join-qr-copy h1 {
+.join-qr-header h1 {
   margin: 0;
-  font-size: clamp(3rem, 5.5vw, 7rem);
-  line-height: 1.08;
+  font-size: clamp(1.8rem, 4vw, 4rem);
+  line-height: 1.2;
   letter-spacing: -0.04em;
 }
 
-.join-qr-copy ol {
-  display: grid;
-  gap: 0.75rem;
-  margin: clamp(2rem, 5vh, 4rem) 0 0;
-  padding-left: 1.5em;
-  font-size: clamp(1.1rem, 1.55vw, 1.75rem);
+.join-qr-header > p:not(.join-qr-kicker) {
+  margin: 1rem 0 0;
+  font-size: clamp(0.9rem, 1.3vw, 1.25rem);
   line-height: 1.55;
   color: var(--ink-dim);
 }
 
 .join-qr-count {
-  margin: 2rem 0 0;
-  font-size: clamp(1.1rem, 1.6vw, 1.6rem);
+  margin: 0.75rem 0;
+  font-size: 1rem;
   color: var(--accent-warm);
 }
 
-.join-qr-code {
+.join-qr-grid {
   display: grid;
-  gap: 1.25rem;
-  justify-items: center;
-  text-align: center;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(0.75rem, 1.5vw, 2rem);
 }
 
+.join-qr-card {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: clamp(0.65rem, 1.3vw, 1.5rem);
+  justify-items: center;
+  align-content: start;
+  color: var(--ink);
+  text-decoration: none;
+  background: #111918;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+}
+.join-qr-card h2 { margin: 0; font-size: clamp(1.25rem, 2vw, 2rem); color: var(--finger-color); }
+.join-qr-card:focus-visible { outline: 2px solid var(--finger-color); outline-offset: 4px; }
+.join-qr-card__status { font-size: clamp(0.7rem, 1vw, 0.95rem); color: var(--ink-dim); }
+
 .join-qr-code__box {
-  width: min(100%, 25rem);
-  padding: clamp(1.25rem, 3vw, 2.5rem);
+  width: min(100%, 16rem);
+  padding: 0.35rem;
   background: #fff;
-  border-radius: 1.5rem;
-  box-shadow: 0 0 5rem rgba(126, 200, 255, 0.18);
+  border-radius: 0.6rem;
 }
 
 .join-qr-code__box svg { display: block; width: 100%; height: auto; }
-.join-qr-code p { max-width: 30rem; margin: 0; overflow-wrap: anywhere; color: var(--ink-dim); }
-.join-qr-code span { font-weight: 700; }
-.join-qr-code .is-online { color: var(--accent); }
-.join-qr-code .is-offline { color: var(--danger); }
+.join-qr-footer > p:first-child { margin: 0; color: var(--ink-dim); }
 
-@media (max-width: 760px) {
-  .join-qr-screen { grid-template-columns: 1fr; }
-  .join-qr-copy h1 { font-size: clamp(2.5rem, 10vw, 4rem); }
+@media (max-width: 1100px) {
+  .join-qr-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+  .join-qr-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* ------------------------------------------------------------------ */

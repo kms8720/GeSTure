@@ -266,7 +266,7 @@ io.on('connection', (socket) =>
   socket.emit('recognition:state', recognitionState);
   socket.emit('pose:classes', POSE_CLASSES);
 
-  socket.on('participant:join', (payload: { token?: unknown }) =>
+  socket.on('participant:join', (payload: { token?: unknown; finger?: unknown }) =>
   {
     if (!isParticipantToken(payload?.token))
     {
@@ -274,11 +274,16 @@ io.on('connection', (socket) =>
       return;
     }
 
+    if (payload.finger !== undefined && !isFinger(payload.finger))
+    {
+      socket.emit('participant:error', { message: '유효한 손가락 QR로 다시 접속해 주세요.' });
+      return;
+    }
     expireParticipants();
     let result;
     try
     {
-      result = participants.join(payload.token, socket.id);
+      result = participants.join(payload.token, socket.id, payload.finger);
     }
     catch (error)
     {
@@ -286,6 +291,12 @@ io.on('connection', (socket) =>
       return;
     }
     socket.data.participantToken = payload.token;
+
+    if (result.releasedFinger)
+    {
+      handState[result.releasedFinger] = 100;
+      suspendRecording();
+    }
 
     if (result.replacedSocketId)
     {
@@ -371,7 +382,7 @@ function suspendRecording(): void
 function updateFinger(finger: Finger, value: number): void
 {
   // 서버에 의한 자리 반환과 단어 완성은 입력이 아니다. 다음 관객의 실제 조작으로 재개한다.
-  // 현재 선택된 단계 버튼을 다시 눌러도 명시적 입력이다. 값 비교 전에 기록을 재개한다.
+  // 현재 손잡이 위치를 다시 조작해도 명시적 입력이다. 값 비교 전에 기록을 재개한다.
   if (!recognitionState.correcting) recordingEnabled = true;
   if (handState[finger] === value) return;
   handState[finger] = value;

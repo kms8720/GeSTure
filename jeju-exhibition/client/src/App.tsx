@@ -82,7 +82,7 @@ export default function App()
         <Route path="/check" element={<ConnectionCheck serverOnline={serverOnline} />} />
         <Route
           path="/join/qr"
-          element={<JoinQr serverOnline={serverOnline} participationSummary={participationSummary} />}
+          element={<JoinQr serverOnline={serverOnline} participationSummary={participationSummary} controllerState={controllerState} />}
         />
         <Route path="/control/:finger" element={<Navigate to="/join" replace />} />
         <Route

@@ -25,6 +25,7 @@ export type ParticipantState = {
 type ParticipantSession = {
   token: string;
   finger: Finger | null;
+  requestedFinger: Finger | null;
   socketId: string | null;
   reconnectDeadline: number | null;
 };
@@ -32,6 +33,7 @@ type ParticipantSession = {
 export type JoinResult = {
   state: ParticipantState;
   replacedSocketId: string | null;
+  releasedFinger: Finger | null;
 };
 
 export type ReleaseResult = {
@@ -46,15 +48,28 @@ export class ParticipantSessions
   private readonly fingerOwners = new Map<Finger, string>();
   private readonly waitingTokens: string[] = [];
 
-  public join(token: string, socketId: string): JoinResult
+  public join(token: string, socketId: string, requestedFinger?: Finger): JoinResult
   {
     const boundToken = this.socketTokens.get(socketId);
     if (boundToken && boundToken !== token)
     {
       throw new Error('이미 참여 중인 연결입니다. 참여를 마친 뒤 다시 접속해 주세요.');
     }
-    const existing = this.sessions.get(token);
-    let replacedSocketId: string | null = null;
+    let existing = this.sessions.get(token);
+    const preferred = requestedFinger ?? existing?.requestedFinger ?? null;
+    let replacedSocketId = existing?.socketId && existing.socketId !== socketId ? existing.socketId : null;
+    let releasedFinger: Finger | null = null;
+
+    // 같은 참여자가 다른 QR을 선택하면 이전 손가락을 반환한 뒤 이동한다.
+    if (existing && preferred && existing.finger !== preferred && existing.requestedFinger !== preferred)
+    {
+      if (existing.finger && this.fingerOwners.has(preferred) && this.waitingTokens.length >= 128)
+      {
+        throw new Error('대기 인원이 많아 지금은 손가락을 변경할 수 없습니다.');
+      }
+      releasedFinger = this.release(token).releasedFinger;
+      existing = undefined;
+    }
 
     if (existing)
     {
@@ -65,11 +80,12 @@ export class ParticipantSessions
       }
       existing.socketId = socketId;
       existing.reconnectDeadline = null;
+      existing.requestedFinger = preferred;
       this.socketTokens.set(socketId, token);
 
       if (!existing.finger)
       {
-        const freeFinger = FINGERS.find((finger) => !this.fingerOwners.has(finger));
+        const freeFinger = this.freeFinger(preferred);
         if (freeFinger)
         {
           const waitingIndex = this.waitingTokens.indexOf(token);
@@ -82,17 +98,18 @@ export class ParticipantSessions
         }
       }
 
-      return { state: this.getState(token), replacedSocketId };
+      return { state: this.getState(token), replacedSocketId, releasedFinger };
     }
 
-    if (this.waitingTokens.length >= 128)
+    const freeFinger = this.freeFinger(preferred);
+    if (!freeFinger && this.waitingTokens.length >= 128)
     {
       throw new Error('현재 대기 인원이 많습니다. 잠시 후 다시 참여해 주세요.');
     }
-    const freeFinger = FINGERS.find((finger) => !this.fingerOwners.has(finger)) ?? null;
     const session: ParticipantSession = {
       token,
       finger: freeFinger,
+      requestedFinger: preferred,
       socketId,
       reconnectDeadline: null
     };
@@ -108,7 +125,7 @@ export class ParticipantSessions
       this.waitingTokens.push(token);
     }
 
-    return { state: this.getState(token), replacedSocketId };
+    return { state: this.getState(token), replacedSocketId, releasedFinger };
   }
 
   public disconnect(socketId: string, now = Date.now()): void
@@ -185,7 +202,14 @@ export class ParticipantSessions
       return { status: 'assigned', finger: session.finger, queuePosition: null, summary };
     }
 
-    const queueIndex = this.waitingTokens.indexOf(token);
+    const eligibleQueue = session.requestedFinger
+      ? this.waitingTokens.filter((waitingToken) =>
+        {
+          const waiting = this.sessions.get(waitingToken);
+          return !waiting?.requestedFinger || waiting.requestedFinger === session.requestedFinger;
+        })
+      : this.waitingTokens;
+    const queueIndex = eligibleQueue.indexOf(token);
     return {
       status: 'waiting',
       finger: null,
@@ -228,9 +252,19 @@ export class ParticipantSessions
     };
   }
 
+  private freeFinger(preferred: Finger | null): Finger | null
+  {
+    if (preferred) return this.fingerOwners.has(preferred) ? null : preferred;
+    return FINGERS.find((finger) => !this.fingerOwners.has(finger)) ?? null;
+  }
+
   private promote(finger: Finger): string | null
   {
-    const index = this.waitingTokens.findIndex((token) => Boolean(this.sessions.get(token)?.socketId));
+    const index = this.waitingTokens.findIndex((token) =>
+    {
+      const session = this.sessions.get(token);
+      return session?.socketId && (!session.requestedFinger || session.requestedFinger === finger);
+    });
     if (index < 0)
     {
       return null;

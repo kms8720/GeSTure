@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { socket } from '../socket/socket';
 import FingerSlider from '../components/FingerSlider';
 import {
   FINGER_LABELS,
+  FINGER_ORDER,
   HandState,
   ParticipantState
 } from '../socket/types';
@@ -52,6 +54,10 @@ function forgetToken(): void
 
 export default function Controller({ handState, serverOnline }: ControllerProps)
 {
+  const [searchParams] = useSearchParams();
+  const rawFinger = searchParams.get('finger');
+  const requestedFinger = FINGER_ORDER.find((finger) => finger === rawFinger);
+  const invalidFinger = rawFinger !== null && !requestedFinger;
   const [token, setToken] = useState(loadToken);
   const [participant, setParticipant] = useState<ParticipantState | null>(null);
   const [error, setError] = useState('');
@@ -61,7 +67,7 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
   {
     const join = (): void =>
     {
-      if (!finished.current) socket.emit('participant:join', { token });
+      if (!finished.current && !invalidFinger) socket.emit('participant:join', { token, finger: requestedFinger });
     };
     const onState = (next: ParticipantState): void =>
     {
@@ -87,7 +93,7 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
       socket.off('participant:state', onState);
       socket.off('participant:error', onError);
     };
-  }, [token]);
+  }, [token, requestedFinger, invalidFinger]);
 
   const leave = (): void =>
   {
@@ -106,18 +112,24 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
   {
     finished.current = false;
     setError('');
-    const nextToken = createToken();
-    try
-    {
-      localStorage.setItem(SESSION_KEY, nextToken);
-    }
-    catch
-    {
-      // 메모리 안의 토큰으로도 현재 탭에서는 참여할 수 있다.
-    }
+    const nextToken = loadToken();
     setParticipant(null);
     setToken(nextToken);
+    if (nextToken === token && socket.connected)
+    {
+      socket.emit('participant:join', { token: nextToken, finger: requestedFinger });
+    }
   };
+
+  if (invalidFinger)
+  {
+    return (
+      <main className="controller-screen controller-screen--message">
+        <h1>손가락 QR을 다시 확인해 주세요</h1>
+        <p>엄지·검지·중지·약지·소지 중 하나의 QR로 접속해 주세요.</p>
+      </main>
+    );
+  }
 
   if (error)
   {
@@ -129,7 +141,7 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
         <button className="controller-primary" type="button" onClick={() =>
         {
           setError('');
-          socket.emit('participant:join', { token });
+          socket.emit('participant:join', { token, finger: requestedFinger });
         }}>다시 시도</button>
       </main>
     );
@@ -141,7 +153,7 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
       <main className="controller-screen controller-screen--message">
         <p className="controller-kicker">GESTURE</p>
         <div className="controller-loader" aria-hidden="true" />
-        <h1>{serverOnline ? '빈 손가락을 찾고 있습니다' : '작품에 다시 연결하고 있습니다'}</h1>
+        <h1>{serverOnline ? requestedFinger ? `${FINGER_LABELS[requestedFinger]}에 연결하고 있습니다` : '빈 손가락을 찾고 있습니다' : '작품에 다시 연결하고 있습니다'}</h1>
         <p aria-live="polite">이 화면을 열어 두면 자동으로 연결됩니다.</p>
         <p>작품 Wi-Fi에 연결되어 있는지 확인해 주세요.</p>
         <a href="/check">연결 점검</a>
@@ -153,9 +165,9 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
   {
     return (
       <main className="controller-screen controller-screen--message">
-        <p className="controller-kicker">다섯 손가락이 함께 움직이는 중</p>
+        <p className="controller-kicker">{requestedFinger ? `${FINGER_LABELS[requestedFinger]}는 지금 다른 사람이 움직이는 중` : '다섯 손가락이 함께 움직이는 중'}</p>
         <div className="controller-queue-number">{participant.queuePosition ?? '—'}</div>
-        <h1>번째로 기다리고 있습니다</h1>
+        <h1>{requestedFinger ? `번째로 ${FINGER_LABELS[requestedFinger]}를 기다리고 있습니다` : '번째로 기다리고 있습니다'}</h1>
         <p aria-live="polite">자리가 나면 이 화면이 자동으로 조종기로 바뀝니다.</p>
         <p className="controller-subtle">현재 {participant.summary.connectedCount}명이 참여 중입니다.</p>
         <button className="controller-secondary" type="button" onClick={leave}>대기 그만두기</button>
@@ -185,7 +197,7 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
   return (
     <main className={`controller-screen controller-screen--control controller-screen--${finger}`}>
       <h1 id="controller-finger-name" className="controller-name">{FINGER_LABELS[finger]}</h1>
-      <FingerSlider value={value} onChange={send} />
+      <FingerSlider key={finger} value={value} onChange={send} />
     </main>
   );
 }
