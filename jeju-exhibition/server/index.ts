@@ -27,6 +27,7 @@ import {
 import { JamoSlot, WordCorrection, correctWord, matchVocabulary, warmUpOllama } from './wordCorrection.js';
 import { operatorAuth } from './operatorAuth.js';
 import { getLanAddresses, networkInfo, validatePublicOrigin } from './network.js';
+import { WordCloud, generateCloudSentence } from './wordCloud.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -100,6 +101,11 @@ function isParticipantToken(value: unknown): value is string
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: '*', methods: ['GET', 'POST'] } });
+const wordCloud = new WordCloud({
+  file: process.env.WORD_CLOUD_FILE || path.resolve(__dirname, '../data/word-cloud.json'),
+  generate: generateCloudSentence,
+  onChange: (state) => io.emit('word-cloud:state', state)
+});
 
 app.use(express.json({ limit: '16kb' }));
 const requireOperator = operatorAuth(process.env.OPERATOR_TOKEN);
@@ -163,6 +169,37 @@ app.get('/recognition-state', (_request, response) =>
   response.json({ ok: true, recognitionState });
 });
 
+app.get('/word-cloud', (_request, response) =>
+{
+  response.setHeader('Cache-Control', 'no-store');
+  response.json({ ok: true, wordCloud: wordCloud.snapshot() });
+});
+
+app.post('/word-cloud/remove-word', (request, response) =>
+{
+  const word = request.body?.word;
+  if (typeof word !== 'string' || !wordCloud.snapshot().words.includes(word))
+  {
+    response.status(400).json({ ok: false, error: '기록된 단어를 선택해 주세요.' }); return;
+  }
+  wordCloud.removeWord(word);
+  recognitionState.words = recognitionState.words.filter((entry) => entry !== word);
+  if (recognitionState.correction?.correctedWord === word) resetRecognition();
+  broadcast();
+  response.json({ ok: true });
+});
+
+app.post('/word-cloud/remove-sentence', (request, response) =>
+{
+  const id = request.body?.id;
+  if (typeof id !== 'string' || !wordCloud.snapshot().sentences.some((sentence) => sentence.id === id))
+  {
+    response.status(400).json({ ok: false, error: '기록된 문장을 선택해 주세요.' }); return;
+  }
+  wordCloud.removeSentence(id);
+  response.json({ ok: true });
+});
+
 app.post('/recognition/reset', (_request, response) =>
 {
   resetRecognition();
@@ -173,7 +210,11 @@ app.post('/recognition/reset', (_request, response) =>
 app.post('/recognition/hide-word', (_request, response) =>
 {
   const word = recognitionState.correction?.correctedWord;
-  if (word) recognitionState.words = recognitionState.words.filter((entry) => entry !== word);
+  if (word)
+  {
+    recognitionState.words = recognitionState.words.filter((entry) => entry !== word);
+    wordCloud.removeWord(word);
+  }
   resetRecognition();
   broadcast();
   response.json({ ok: true, recognitionState });
@@ -264,6 +305,7 @@ io.on('connection', (socket) =>
   socket.emit('controller:state', participants.getControllerState());
   socket.emit('participation:summary', participants.getSummary());
   socket.emit('recognition:state', recognitionState);
+  socket.emit('word-cloud:state', wordCloud.snapshot());
   socket.emit('pose:classes', POSE_CLASSES);
 
   socket.on('participant:join', (payload: { token?: unknown; finger?: unknown }) =>
@@ -504,6 +546,7 @@ async function runCorrection(slots: JamoSlot[]): Promise<void>
   const startedGeneration = generation;
   const controller = new AbortController();
   activeCorrection = controller;
+  wordCloud.cancelGeneration();
   suspendRecording();
 
   recognitionState.correcting = true;
@@ -530,6 +573,7 @@ async function runCorrection(slots: JamoSlot[]): Promise<void>
         if (correction.correctedWord)
         {
           recognitionState.words.push(correction.correctedWord);
+          wordCloud.addWord(correction.correctedWord);
           if (recognitionState.words.length > MAX_WORD_HISTORY)
           {
             recognitionState.words.shift();

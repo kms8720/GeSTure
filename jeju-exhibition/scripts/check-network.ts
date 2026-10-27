@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 const origin = new URL(process.argv[2] ?? process.env.PUBLIC_ORIGIN ?? `http://127.0.0.1:${process.env.PORT ?? 3002}`).origin;
 const checks: { name: string; ok: boolean; detail?: string }[] = [];
 const fingerRoutes = ['thumb', 'index', 'middle', 'ring', 'pinky'].map((finger) => `/join?finger=${finger}`);
-for (const route of ['/health', '/network-info', '/join', ...fingerRoutes, '/join/qr', '/check', '/display/hand', '/display/word'])
+for (const route of ['/health', '/network-info', '/word-cloud', '/join', ...fingerRoutes, '/join/qr', '/check', '/display/hand', '/display/word'])
 {
   try
   {

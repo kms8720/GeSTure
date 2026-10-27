@@ -7,6 +7,7 @@ import JoinQr from './pages/JoinQr';
 import Monitor from './pages/Monitor';
 import WordDisplay from './pages/WordDisplay';
 import { socket } from './socket/socket';
+import { EMPTY_WORD_CLOUD, WordCloudState } from '../../shared/wordCloud';
 import {
   ControllerState,
   HandState,
@@ -27,6 +28,7 @@ export default function App()
   const [recognitionState, setRecognitionState] = useState<RecognitionState>(INITIAL_RECOGNITION_STATE);
   const [poseClasses, setPoseClasses] = useState<PoseClass[]>([]);
   const [serverOnline, setServerOnline] = useState(socket.connected);
+  const [wordCloud, setWordCloud] = useState<WordCloudState>(EMPTY_WORD_CLOUD);
 
   useEffect(() =>
   {
@@ -39,6 +41,7 @@ export default function App()
     socket.on('controller:state', setControllerState);
     socket.on('participation:summary', setParticipationSummary);
     socket.on('recognition:state', setRecognitionState);
+    socket.on('word-cloud:state', setWordCloud);
     socket.on('pose:classes', setPoseClasses);
     setServerOnline(socket.connected);
 
@@ -55,6 +58,7 @@ export default function App()
       socket.off('controller:state', setControllerState);
       socket.off('participation:summary', setParticipationSummary);
       socket.off('recognition:state', setRecognitionState);
+      socket.off('word-cloud:state', setWordCloud);
       socket.off('pose:classes', setPoseClasses);
     };
   }, []);
@@ -75,7 +79,7 @@ export default function App()
         />
         <Route
           path="/display/word"
-          element={<WordDisplay recognitionState={recognitionState} serverOnline={serverOnline} />}
+          element={<WordDisplay wordCloud={wordCloud} serverOnline={serverOnline} />}
         />
         <Route path="/display" element={<Navigate to="/display/hand" replace />} />
         <Route path="/join" element={<Controller handState={handState} serverOnline={serverOnline} />} />
@@ -95,6 +99,7 @@ export default function App()
               recognitionState={recognitionState}
               poseClasses={poseClasses}
               serverOnline={serverOnline}
+              wordCloud={wordCloud}
             />
           }
         />

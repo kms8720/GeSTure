@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { WordCloudState, sentenceText } from '../../../shared/wordCloud';
 import {
   ControllerState,
   FINGER_LABELS,
@@ -17,6 +18,7 @@ type MonitorProps = {
   recognitionState: RecognitionState;
   poseClasses: PoseClass[];
   serverOnline: boolean;
+  wordCloud: WordCloudState;
 };
 
 /**
@@ -25,7 +27,7 @@ type MonitorProps = {
  * ACC 버전에서 미구현으로 남아 있던 reset과 강제 확정 버튼을 여기 넣었다.
  * 관객이 손 모양을 다 채우지 않고 떠났을 때 운영자가 끊어줄 수단이 필요하다.
  */
-export default function Monitor({ handState, controllerState, participationSummary, recognitionState, poseClasses, serverOnline }: MonitorProps)
+export default function Monitor({ handState, controllerState, participationSummary, recognitionState, poseClasses, serverOnline, wordCloud }: MonitorProps)
 {
   const { current, slots, slotsNeeded, correction, words, correcting, note, updatedAt } = recognitionState;
   const [busy, setBusy] = useState(false);
@@ -44,14 +46,15 @@ export default function Monitor({ handState, controllerState, participationSumma
     fetch('/network-info').then((response) => response.json()).then(setNetwork).catch(() => setNetwork(null));
   }, [serverOnline]);
 
-  const post = async (url: string): Promise<void> =>
+  const post = async (url: string, body?: unknown): Promise<void> =>
   {
     setBusy(true);
     setError('');
     try
     {
       const response = await fetch(url, {
-        method: 'POST', headers: { Authorization: `Bearer ${operatorToken}` }
+        method: 'POST', headers: { Authorization: `Bearer ${operatorToken}`, 'Content-Type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body)
       });
       const result = await response.json();
       if (!response.ok)
@@ -106,10 +109,25 @@ export default function Monitor({ handState, controllerState, participationSumma
         참여 주소: {network?.joinUrl ?? '설정 필요'} · Wi-Fi: {network?.wifiSsid || '설정 필요'}
         {' · '}<a href="/join/qr" target="_blank" rel="noreferrer">QR 안내판</a>
         {' · '}<a href="/check" target="_blank" rel="noreferrer">휴대폰 연결 점검</a>
+        {' · '}<a href="/display/word" target="_blank" rel="noreferrer">단어 구름 디스플레이</a>
       </p>
       {network?.warning && <p className="monitor__error">{network.warning}</p>}
 
       <section className="monitor__grid">
+        <div className="monitor__card monitor__card--wide">
+          <h2>단어 구름 · {wordCloud.words.length}개 단어 / {wordCloud.sentences.length}개 문장</h2>
+          <p>{wordCloud.generating ? '로컬 모델이 다음 문장을 구성하는 중' : '모인 단어와 문장을 전시 화면에 표시 중'}</p>
+          {!wordCloud.storageAvailable && <p className="monitor__error" role="alert">단어 구름 기록을 저장하지 못했습니다. 서버의 저장 경로와 권한을 확인해 주세요.</p>}
+          <ul className="monitor__cloud-words">
+            {wordCloud.words.map((word) => <li key={word}>{word} <button type="button" disabled={busy || !authorized || !serverOnline}
+              aria-label={`${word} 단어 내리기`} onClick={() => post('/word-cloud/remove-word', { word })}>내리기</button></li>)}
+          </ul>
+          <ol className="monitor__cloud-sentences">
+            {wordCloud.sentences.map((sentence) => <li key={sentence.id}>{sentenceText(sentence)} <button type="button"
+              disabled={busy || !authorized || !serverOnline} aria-label={`${sentenceText(sentence)} 문장 내리기`}
+              onClick={() => post('/word-cloud/remove-sentence', { id: sentence.id })}>내리기</button></li>)}
+          </ol>
+        </div>
         <div className="monitor__card">
           <h2>손가락</h2>
           <table>

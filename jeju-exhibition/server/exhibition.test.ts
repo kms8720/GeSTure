@@ -4,6 +4,9 @@ import { spawn, ChildProcess } from 'node:child_process';
 import test, { before, after, beforeEach, afterEach } from 'node:test';
 import { io, Socket } from 'socket.io-client';
 import { FINGERS, POSE_CLASSES, type Finger } from './poseClasses.js';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import type { ParticipantState, ParticipationSummary } from './participantSessions.js';
 
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -17,6 +20,7 @@ async function until(predicate: () => boolean | Promise<boolean>, timeout = 4000
   }
 }
 const key = 'test-operator-access-key';
+const cloudDirectory = mkdtempSync(path.join(tmpdir(), 'gesture-exhibition-test-'));
 let appProcess: ChildProcess;
 let url = '';
 let port = 0;
@@ -46,7 +50,7 @@ async function startApp(operatorKey = key): Promise<void>
   appProcess = spawn(process.execPath, ['--import', 'tsx', 'server/index.ts'], {
     env: { ...process.env, PORT: String(port), SLOTS_PER_WORD: '6', POSE_HOLD_MS: '400',
       OPERATOR_TOKEN: operatorKey, PUBLIC_ORIGIN: `http://192.168.50.10:${port}`, WIFI_SSID: 'GeSTure-test', WIFI_PASSWORD: 'guest-test',
-      EXHIBITION_STRICT: '1', OLLAMA_URL: `http://127.0.0.1:${mockPort}`, OLLAMA_TIMEOUT_MS: '700', WORD_DEADLINE_MS: '700' },
+      WORD_CLOUD_FILE: path.join(cloudDirectory, 'cloud.json'), EXHIBITION_STRICT: '1', OLLAMA_URL: `http://127.0.0.1:${mockPort}`, OLLAMA_TIMEOUT_MS: '700', WORD_DEADLINE_MS: '700' },
     stdio: ['ignore', 'ignore', 'pipe']
   });
   let errors = ''; appProcess.stderr?.on('data', (chunk) => { errors += chunk; });
@@ -103,12 +107,14 @@ after(async () =>
   for (const socket of sockets) socket.disconnect();
   await stopApp(); model.closeAllConnections();
   await new Promise<void>((resolve) => model.close(() => resolve()));
+  rmSync(cloudDirectory, { recursive: true, force: true });
 });
 
 test('all mutation routes require an operator key while public participation stays open', async () =>
 {
   for (const route of ['/hand-state', '/recognition/reset', '/recognition/finalize',
-    '/recognition/hide-word', '/participants/thumb/release', '/word-correction', '/operator/session'])
+    '/recognition/hide-word', '/participants/thumb/release', '/word-correction', '/operator/session',
+    '/word-cloud/remove-word', '/word-cloud/remove-sentence'])
   {
     assert.equal((await post(route, {}, false)).status, 401);
   }
@@ -271,8 +277,13 @@ test('unsafe model output is replaced and an operator can remove the current wor
   const result = await state(); assert.equal(result.correction.source, 'vocabulary');
   const word = result.correction.correctedWord;
   assert.notEqual(word, '병신');
+  const cloud = (await (await fetch(url + '/word-cloud')).json()).wordCloud;
+  assert.ok(cloud.words.includes(word));
   await post('/recognition/hide-word');
   const hidden = await state(); assert.equal(hidden.correction, null); assert.ok(!hidden.words.includes(word));
+  const hiddenCloud = (await (await fetch(url + '/word-cloud')).json()).wordCloud;
+  assert.ok(!hiddenCloud.words.includes(word));
+  assert.ok(hiddenCloud.sentences.every((sentence: { parts: { source: string }[] }) => sentence.parts.every((part) => part.source !== word)));
 });
 
 test('rapid mobile updates are broadcast at the recognition tick rate', async () =>
