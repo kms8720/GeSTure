@@ -189,11 +189,12 @@ test('five sockets control only their assigned fingers and three waiters succeed
   clients[0].emit('participant:join', { token: 'different-integration-token' });
   await until(() => participantError.length > 0);
   assert.equal(summaries.get(clients[1])?.occupiedCount, 5);
+  const retained = await hand();
   for (let i = 0; i < 3; i++)
   {
     clients[i].emit('participant:leave');
     await until(() => states.get(clients[5 + i])?.finger === FINGERS[i]);
-    assert.equal((await hand())[FINGERS[i]], 100);
+    assert.equal((await hand())[FINGERS[i]], retained[FINGERS[i]]);
   }
   assert.equal(summaries.get(clients[7])?.waitingCount, 0);
 });
@@ -242,7 +243,7 @@ test('closing a read-only monitor does not cancel an operator pose', async () =>
   finally { observer.disconnect(); }
 });
 
-test('real expiry resets the finger and promotes a waiting participant', async () =>
+test('real expiry retains the finger pose and gives the waiting participant control from that position', async () =>
 {
   const clients: Socket[] = [];
   for (let i = 0; i < 6; i++) clients.push(await connectParticipant(i));
@@ -250,7 +251,9 @@ test('real expiry resets the finger and promotes a waiting participant', async (
   clients[0].disconnect();
   await delay(600); assert.equal(states.get(clients[5])?.status, 'waiting');
   await until(() => states.get(clients[5])?.finger === 'thumb', 17000);
-  assert.equal((await hand()).thumb, 100);
+  assert.equal((await hand()).thumb, 0);
+  clients[5].emit('finger:update', { value: 35 });
+  await until(async () => (await hand()).thumb === 35);
 });
 
 test('a reset or hide during generation cancels late results and repeated finalize is rejected', async () =>
@@ -316,7 +319,7 @@ test('network metadata honors the configured address and never discloses the ope
   assert.equal((await post('/hand-state', { thumb: 'NaN' })).status, 400);
 });
 
-test('specific QR requests wait for their own finger and a rescan resets and transfers the old role', async () =>
+test('a QR rescan preserves the old pose and transfers control without recording stale input', async () =>
 {
   const owner = await connectParticipant(100, false, 'thumb');
   const waiter = await connectParticipant(101, false, 'thumb');
@@ -324,18 +327,41 @@ test('specific QR requests wait for their own finger and a rescan resets and tra
   assert.equal(states.get(waiter)?.queuePosition, 1);
   owner.emit('finger:update', { value: 0 });
   await until(async () => (await hand()).thumb === 0);
+  const slotsBefore = (await state()).slots.length;
   owner.emit('participant:join', { token: 'integration-token-100', finger: 'ring' });
   await until(() => states.get(owner)?.finger === 'ring' && states.get(waiter)?.finger === 'thumb');
-  assert.equal((await hand()).thumb, 100);
+  assert.equal((await hand()).thumb, 0);
   assert.equal(summaries.get(owner)?.occupiedCount, 2);
+  await delay(650);
+  assert.equal((await state()).slots.length, slotsBefore);
   owner.emit('finger:update', { finger: 'thumb', value: 25 });
   await until(async () => (await hand()).ring === 25);
-  assert.equal((await hand()).thumb, 100);
+  assert.equal((await hand()).thumb, 0);
   let error = '';
   owner.once('participant:error', (next) => { error = next.message; });
   owner.emit('participant:join', { token: 'integration-token-100', finger: 'unknown' });
   await until(() => error.length > 0);
   assert.equal(states.get(owner)?.finger, 'ring');
+});
+
+test('leaving and operator release preserve the pose until the next participant actually moves it', async () =>
+{
+  const owner = await connectParticipant(300, false, 'pinky');
+  owner.emit('finger:update', { value: 12 });
+  await until(async () => (await hand()).pinky === 12);
+  owner.emit('participant:leave');
+  await until(() => states.get(owner)?.status === 'released');
+  assert.equal((await hand()).pinky, 12);
+  const next = await connectParticipant(301, false, 'pinky');
+  assert.equal(states.get(next)?.finger, 'pinky');
+  assert.equal((await hand()).pinky, 12);
+  next.emit('finger:update', { value: 34 });
+  await until(async () => (await hand()).pinky === 34);
+  await post('/participants/pinky/release');
+  await until(() => states.get(next)?.status === 'released');
+  assert.equal((await hand()).pinky, 34);
+  await delay(650);
+  assert.equal((await state()).slots.length, 0);
 });
 
 test('five chosen QR roles are preserved through reconnect and server restart', async () =>

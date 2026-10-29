@@ -336,7 +336,6 @@ io.on('connection', (socket) =>
 
     if (result.releasedFinger)
     {
-      handState[result.releasedFinger] = 100;
       suspendRecording();
     }
 
@@ -434,7 +433,6 @@ function applyParticipantRelease(result: ReleaseResult): void
 {
   if (result.releasedFinger)
   {
-    handState[result.releasedFinger] = 100;
     suspendRecording();
   }
   broadcastParticipation();
@@ -448,13 +446,7 @@ function expireParticipants(): void
     return;
   }
 
-  expired.forEach((result) =>
-  {
-    if (result.releasedFinger)
-    {
-      handState[result.releasedFinger] = 100;
-    }
-  });
+  // 자리 반환은 손 조작이 아니다. 마지막 굽힘값을 그대로 다음 관객에게 넘긴다.
   suspendRecording();
   broadcastParticipation();
 }
