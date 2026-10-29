@@ -4,9 +4,9 @@ import test, { after, beforeEach } from 'node:test';
 import { generateCloudSentence, parseSentenceCandidates, selectReviewedSentence } from './sentenceComposition.js';
 import { sentenceText, sentenceWords } from '../shared/wordCloud.js';
 
-const known = ['새벽', '보람', '평화', '대답'];
+const known = ['새벽', '보람'];
 const first = { text: '새벽부터 준비한 일을 마치고 나니 보람이 느껴졌다.', words: ['새벽', '보람'], action: '준비한 일을 마치고' };
-const second = { text: '서로의 대답을 끝까지 들으니 마음에 평화가 찾아왔다.', words: ['대답', '평화'], action: '대답을 끝까지 들으니' };
+const second = { text: '새벽에 이웃의 일을 도와주고 나니 보람이 느껴졌다.', words: ['새벽', '보람'] };
 const originalOrigin = process.env.OLLAMA_URL;
 let calls: unknown[] = [];
 let rejectReview = false;
@@ -14,6 +14,7 @@ let malformed = false;
 let stallBody = false;
 let stallReview = false;
 let firstDelay = 0;
+let wrongPair = false;
 const mock = createServer((request, response) =>
 {
   let body = '';
@@ -23,7 +24,7 @@ const mock = createServer((request, response) =>
     calls.push(JSON.parse(body));
     response.writeHead(200, { 'Content-Type': 'application/json' });
     if (stallBody || (stallReview && calls.length === 2)) { response.flushHeaders(); return; }
-    const content = calls.length === 1 ? { candidates: [first, second] } : { best: rejectReview ? -1 : 1, natural: true, coherent: !rejectReview, usesWords: true };
+    const content = calls.length === 1 ? { candidates: wrongPair ? [{ text: '서로의 대답을 듣고 나니 마음에 평화가 찾아왔다.', words: ['대답', '평화'] }] : [first, second] } : { best: rejectReview ? -1 : 1, natural: true, coherent: !rejectReview, usesWords: true };
     const output = JSON.stringify({ message: { content: malformed ? '{invalid' : JSON.stringify(content) } });
     if (calls.length === 1 && firstDelay) setTimeout(() => response.end(output), firstDelay);
     else response.end(output);
@@ -31,7 +32,7 @@ const mock = createServer((request, response) =>
 });
 await new Promise<void>((resolve) => mock.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${(mock.address() as { port: number }).port}`;
-beforeEach(() => { process.env.OLLAMA_URL = origin; calls = []; rejectReview = false; malformed = false; stallBody = false; stallReview = false; firstDelay = 0; });
+beforeEach(() => { process.env.OLLAMA_URL = origin; calls = []; rejectReview = false; malformed = false; stallBody = false; stallReview = false; firstDelay = 0; wrongPair = false; });
 after(async () =>
 {
   if (originalOrigin === undefined) delete process.env.OLLAMA_URL;
@@ -41,12 +42,14 @@ after(async () =>
 
 test('the model writes sentences and an independent review selects the displayed candidate', async () =>
 {
-  const result = await generateCloudSentence(known, '대답', new AbortController().signal);
+  const result = await generateCloudSentence(known, new AbortController().signal);
   assert.ok(result); assert.equal(sentenceText(result), second.text);
-  assert.deepEqual(sentenceWords(result), ['대답', '평화']);
+  assert.deepEqual(sentenceWords(result), known);
   assert.equal(calls.length, 2);
   const writer = calls[0] as { format: { type: string }; messages: { content: string }[] };
   assert.equal(writer.format.type, 'object');
+  assert.ok(writer.messages[0].content.includes(JSON.stringify(known)));
+  assert.ok(writer.messages[0].content.includes('빠짐없이 사용'));
   const reviewer = calls[1] as { messages: { content: string }[] };
   assert.ok(reviewer.messages[0].content.includes('문장 편집자'));
 });
@@ -54,7 +57,7 @@ test('the model writes sentences and an independent review selects the displayed
 test('a negative semantic review or missing review flags never publishes a candidate', async () =>
 {
   rejectReview = true;
-  assert.equal(await generateCloudSentence(known, '대답', new AbortController().signal), null);
+  assert.equal(await generateCloudSentence(known, new AbortController().signal), null);
   const candidates = parseSentenceCandidates({ candidates: [first, second, first] }, known);
   assert.equal(candidates.length, 2);
   assert.equal(parseSentenceCandidates({ candidates: [{
@@ -67,7 +70,7 @@ test('a negative semantic review or missing review flags never publishes a candi
 test('malformed model output does not proceed to review', async () =>
 {
   malformed = true;
-  await assert.rejects(generateCloudSentence(known, '대답', new AbortController().signal));
+  await assert.rejects(generateCloudSentence(known, new AbortController().signal));
   assert.equal(calls.length, 1);
 });
 
@@ -75,10 +78,10 @@ test('the deadline bounds stalled response bodies and cancellation stops the com
 {
   stallBody = true;
   const start = Date.now();
-  await assert.rejects(generateCloudSentence(known, '대답', new AbortController().signal, { timeoutMs: 100 }));
+  await assert.rejects(generateCloudSentence(known, new AbortController().signal, { timeoutMs: 100 }));
   assert.ok(Date.now() - start < 1000);
   const controller = new AbortController();
-  const task = generateCloudSentence(known, '대답', controller.signal);
+  const task = generateCloudSentence(known, controller.signal);
   controller.abort();
   await assert.rejects(task);
 });
@@ -87,7 +90,22 @@ test('writing and reviewing share one total deadline instead of restarting the c
 {
   firstDelay = 70; stallReview = true;
   const start = Date.now();
-  await assert.rejects(generateCloudSentence(known, '대답', new AbortController().signal, { timeoutMs: 120 }));
+  await assert.rejects(generateCloudSentence(known, new AbortController().signal, { timeoutMs: 120 }));
   assert.equal(calls.length, 2);
   assert.ok(Date.now() - start < 300);
+});
+
+
+test('the model cannot replace the randomly selected pair, omit an anchor or choose from a larger pool', async () =>
+{
+  wrongPair = true;
+  assert.equal(await generateCloudSentence(known, new AbortController().signal), null);
+  assert.equal(calls.length, 1);
+  for (const words of [[], ['새벽'], ['새벽', '새벽'], ['새벽', '보람', '평화']])
+    assert.equal(await generateCloudSentence(words, new AbortController().signal), null);
+  assert.equal(calls.length, 1);
+  for (const candidate of [
+    { text: '새벽에 이웃의 일을 도와주고 집으로 돌아왔다.', words: known },
+    { text: '새벽에 이웃의 일을 도와주고 집으로 돌아왔다.', words: ['새벽'] }
+  ]) assert.deepEqual(parseSentenceCandidates({ candidates: [candidate] }, known), []);
 });

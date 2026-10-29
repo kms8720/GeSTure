@@ -11,9 +11,21 @@ const MAX_SENTENCES = 80;
 type Options = {
   file: string;
   onChange?: (state: WordCloudState) => void;
-  generate?: (words: string[], latestWord: string, signal: AbortSignal) => Promise<CloudSentence | null>;
+  generate?: (words: string[], signal: AbortSignal) => Promise<CloudSentence | null>;
   debounceMs?: number;
+  random?: () => number;
 };
+
+/** 새 입력은 반드시 포함하고, 나머지는 전체 기록에서 중복 없이 같은 확률로 뽑는다. */
+export function chooseSentenceWords(words: string[], requiredWord?: string, random = Math.random): string[]
+{
+  const pool = [...new Set(words)];
+  if (pool.length < 2) return [];
+  const picked: string[] = [];
+  if (requiredWord && pool.includes(requiredWord)) picked.push(...pool.splice(pool.indexOf(requiredWord), 1));
+  while (picked.length < 2) picked.push(...pool.splice(Math.floor(random() * pool.length), 1));
+  return picked;
+}
 
 export class WordCloud
 {
@@ -74,11 +86,12 @@ export class WordCloud
     if (!this.state.words.includes(word)) this.state.words.push(word);
     this.state.words = this.state.words.slice(-MAX_WORDS);
     this.state.sentences = this.state.sentences.filter((sentence) => sentenceWords(sentence).every((source) => this.state.words.includes(source)));
-    this.ensureNeutralSentence();
+    const words = chooseSentenceWords(this.state.words, word, this.options.random);
+    this.ensureNeutralSentence(words);
     this.publish(true);
     if (this.state.words.length >= 2 && this.options.generate)
     {
-      this.timer = setTimeout(() => { this.timer = undefined; void this.enrich(); }, this.options.debounceMs ?? 700);
+      this.timer = setTimeout(() => { this.timer = undefined; void this.enrich(words); }, this.options.debounceMs ?? 700);
       this.timer.unref();
     }
   }
@@ -87,9 +100,10 @@ export class WordCloud
   {
     this.cancelGeneration();
     if (this.state.words.length < 2 || !this.options.generate) return;
-    this.ensureNeutralSentence();
+    const words = chooseSentenceWords(this.state.words, undefined, this.options.random);
+    this.ensureNeutralSentence(words);
     this.publish(true);
-    await this.enrich();
+    await this.enrich(words);
   }
 
   removeWord(word: string): void
@@ -118,42 +132,40 @@ export class WordCloud
     if (this.state.generating) { this.state.generating = false; this.publish(false); }
   }
 
-  private ensureNeutralSentence(): void
+  private ensureNeutralSentence(words = chooseSentenceWords(this.state.words, this.state.latestWord, this.options.random)): void
   {
     if (this.state.sentences.some((sentence) => sentence.origin === 'model')) return;
-    const latest = this.state.latestWord;
-    const other = this.state.words.filter((word) => word !== latest).slice(-1)[0];
-    this.state.sentences = other ? [createNeutralSentence([latest, other])] : [];
+    this.state.sentences = words.length === 2 ? [createNeutralSentence(words)] : [];
   }
 
   private appendSentence(sentence: CloudSentence): void
   {
-    // 검토된 문장이 생기면 기계적인 대체 문장은 전시 후보에서 제외한다.
-    this.state.sentences = this.state.sentences.filter((entry) => entry.origin === 'model');
-    if (!this.state.sentences.some((entry) => entry.id === sentence.id)) this.state.sentences.push(sentence);
+    // 새 결과를 마지막으로 옮겨 같은 문장이 다시 나와도 이번 입력의 결과를 먼저 보여 준다.
+    this.state.sentences = this.state.sentences.filter((entry) => entry.origin === 'model' && entry.id !== sentence.id);
+    this.state.sentences.push(sentence);
     this.state.sentences = this.state.sentences.slice(-MAX_SENTENCES);
   }
 
-  private async enrich(): Promise<void>
+  private async enrich(words: string[]): Promise<void>
   {
     const revision = this.revision;
     const controller = new AbortController();
     this.controller = controller;
     this.state.generating = true;
     this.publish(false);
+    let result: CloudSentence | null = null;
     try
     {
-      const words = [this.state.latestWord, ...this.state.words.filter((word) => word !== this.state.latestWord).slice(-11)];
-      const generated = await this.options.generate!(words, this.state.latestWord, controller.signal);
+      const generated = await this.options.generate!([...words], controller.signal);
       if (revision !== this.revision || controller.signal.aborted) return;
-      const validated = generated && validateModelSentence({ text: sentenceText(generated), words: sentenceWords(generated) }, this.state.words);
-      if (validated) this.appendSentence(validated);
+      result = generated && validateModelSentence({ text: sentenceText(generated), words: sentenceWords(generated) }, words);
     }
-    catch { /* 기존 검토 문장, 없으면 중립적인 연결 문장으로 계속한다. */ }
+    catch { /* 실패해도 선택한 두 단어는 바꾸지 않고 중립적인 연결 문장을 쓴다. */ }
     finally
     {
       if (revision === this.revision)
       {
+        this.appendSentence(result ?? createNeutralSentence(words));
         this.controller = undefined;
         this.state.generating = false;
         this.publish(true);

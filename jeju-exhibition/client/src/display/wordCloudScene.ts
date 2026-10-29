@@ -11,6 +11,7 @@ export function createWordCloudScene(stage: HTMLElement, layer: HTMLElement, sen
   let selected = new Map<string, { node: HTMLSpanElement; slot: HTMLSpanElement; surface: string }>();
   let currentSentence: CloudSentence | null = null;
   let lastSentence = '';
+  let pendingSentenceId = '';
   let phase: 'orbit' | 'halt' | 'arrange' | 'sentence' | 'release' = 'orbit';
   let cycleStart = performance.now();
   let lastFrame = 0;
@@ -66,10 +67,11 @@ export function createWordCloudScene(stage: HTMLElement, layer: HTMLElement, sen
     const reviewed = available.filter((sentence) => sentence.origin === 'model');
     const pool = reviewed.length ? reviewed : available;
     const fresh = pool.filter((sentence) => sentenceText(sentence) !== lastSentence);
-    const preferred = fresh.filter((sentence) => sentenceWords(sentence).includes(state.latestWord));
-    const choices = preferred.length ? preferred : fresh.length ? fresh : pool;
+    const pending = available.find((sentence) => sentence.id === pendingSentenceId);
+    const choices = pending ? [pending] : fresh.length ? fresh : pool;
     if (!choices.length) return;
     currentSentence = choices[Math.floor(Math.random() * choices.length)];
+    pendingSentenceId = '';
     lastSentence = sentenceText(currentSentence);
     sentenceBox.classList.toggle('is-long', lastSentence.length > 38);
     sentenceBox.replaceChildren();
@@ -157,6 +159,12 @@ export function createWordCloudScene(stage: HTMLElement, layer: HTMLElement, sen
   return {
     update(next: WordCloudState): void
     {
+      const previousLast = state.sentences[state.sentences.length - 1]?.id;
+      const nextLast = next.sentences[next.sentences.length - 1]?.id;
+      const freshResult = !!nextLast && (nextLast !== previousLast || (state.generating && !next.generating));
+      if (freshResult) pendingSentenceId = nextLast;
+      else if (!next.sentences.some((sentence) => sentence.id === pendingSentenceId)) pendingSentenceId = '';
+      const hadWords = state.words.length > 0;
       state = next;
       const wanted = new Set(state.words);
       nodes.forEach((node, word) => { if (!wanted.has(word)) { node.remove(); nodes.delete(word); } });
@@ -174,6 +182,8 @@ export function createWordCloudScene(stage: HTMLElement, layer: HTMLElement, sen
       });
       nodes.forEach((node, word) => node.classList.toggle('is-newest', word === state.latestWord));
       if (invalidCurrent) reset(performance.now());
+      // 완성된 새 문장을 다음 정렬에서 우선하고, 궤도 중이면 대기 시간을 줄인다.
+      if (freshResult && hadWords && phase === 'orbit') cycleStart = Math.min(cycleStart, performance.now() - 4900);
     },
     destroy(): void
     {
