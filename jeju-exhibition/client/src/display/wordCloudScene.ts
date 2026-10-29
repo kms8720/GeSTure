@@ -62,13 +62,16 @@ export function createWordCloudScene(stage: HTMLElement, layer: HTMLElement, sen
 
   function attention(): void
   {
-    const pool = state.sentences.filter((sentence) => sentenceWords(sentence).every((word) => nodes.has(word)));
+    const available = state.sentences.filter((sentence) => sentenceWords(sentence).every((word) => nodes.has(word)));
+    const reviewed = available.filter((sentence) => sentence.origin === 'model');
+    const pool = reviewed.length ? reviewed : available;
     const fresh = pool.filter((sentence) => sentenceText(sentence) !== lastSentence);
     const preferred = fresh.filter((sentence) => sentenceWords(sentence).includes(state.latestWord));
     const choices = preferred.length ? preferred : fresh.length ? fresh : pool;
     if (!choices.length) return;
     currentSentence = choices[Math.floor(Math.random() * choices.length)];
     lastSentence = sentenceText(currentSentence);
+    sentenceBox.classList.toggle('is-long', lastSentence.length > 38);
     sentenceBox.replaceChildren();
     selected = new Map();
     currentSentence.parts.forEach((piece) =>

@@ -178,6 +178,21 @@ app.get('/word-cloud', (_request, response) =>
   response.json({ ok: true, wordCloud: wordCloud.snapshot() });
 });
 
+app.post('/word-cloud/regenerate', async (_request, response) =>
+{
+  const state = wordCloud.snapshot();
+  if (recognitionState.correcting || state.generating)
+  {
+    response.status(409).json({ ok: false, error: '현재 생성이 끝난 뒤 다시 구성해 주세요.' }); return;
+  }
+  if (state.words.length < 2)
+  {
+    response.status(400).json({ ok: false, error: '서로 다른 단어가 두 개 이상 필요합니다.' }); return;
+  }
+  await wordCloud.regenerate();
+  response.json({ ok: true, wordCloud: wordCloud.snapshot() });
+});
+
 app.post('/word-cloud/remove-word', (request, response) =>
 {
   const word = request.body?.word;

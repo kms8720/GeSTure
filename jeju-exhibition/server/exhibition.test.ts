@@ -114,7 +114,7 @@ test('all mutation routes require an operator key while public participation sta
 {
   for (const route of ['/hand-state', '/recognition/reset', '/recognition/finalize',
     '/recognition/hide-word', '/participants/thumb/release', '/word-correction', '/operator/session',
-    '/word-cloud/remove-word', '/word-cloud/remove-sentence'])
+    '/word-cloud/remove-word', '/word-cloud/remove-sentence', '/word-cloud/regenerate'])
   {
     assert.equal((await post(route, {}, false)).status, 401);
   }

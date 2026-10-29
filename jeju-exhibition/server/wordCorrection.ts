@@ -39,9 +39,14 @@ const WORD_DEADLINE_MS = Number(process.env.WORD_DEADLINE_MS ?? 20000);
 export const EXHIBITION_STRICT = process.env.EXHIBITION_STRICT !== '0';
 const BLOCKED_WORD_PARTS = ['씨발', '시발', '개새끼', '병신', '지랄'];
 
+export function hasBlockedWords(text: string): boolean
+{
+  return BLOCKED_WORD_PARTS.some((part) => text.includes(part));
+}
+
 export function isAllowedOutput(word: string): boolean
 {
-  return isValidKoreanWord(word) && !BLOCKED_WORD_PARTS.some((part) => word.includes(part)) &&
+  return isValidKoreanWord(word) && !hasBlockedWords(word) &&
     (!EXHIBITION_STRICT || VOCABULARY.includes(word));
 }
 

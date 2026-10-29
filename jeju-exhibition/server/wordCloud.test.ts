@@ -3,7 +3,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { WordCloud, composeCloudSentence, validateSentencePlan } from './wordCloud.js';
+import { WordCloud } from './wordCloud.js';
+import { createNeutralSentence, validateModelSentence } from './sentenceComposition.js';
 import { sentenceText, sentenceWords } from '../shared/wordCloud.js';
 import { VOCABULARY } from './vocabulary.js';
 
@@ -33,14 +34,23 @@ test('real words accumulate without demo seeds, deduplicate and survive restart 
   finally { cleanup(); }
 });
 
-test('sentence plans accept only collected words and reviewed templates, with correct Korean particles', () =>
+test('free sentences link exact collected words and reject invalid or repeated anchors', () =>
 {
-  assert.equal(sentenceText(composeCloudSentence(['달', '바다'], 0, 'template')), '달은 바다와 만난다.');
-  assert.equal(sentenceText(composeCloudSentence(['바다', '달'], 2, 'template')), '바다가 달을 천천히 깨운다.');
-  for (const plan of [null, { template: 5, words: ['달', '바다'] }, { template: 3, words: ['달', '바다'] },
-    { template: 0, words: ['달', '달'] }, { template: 0, words: ['달', '미등록'] },
-    { template: 0, words: ['달', '<img src=x onerror=alert(1)>'] }]) assert.equal(validateSentencePlan(plan, ['달', '바다']), null);
-  assert.ok(validateSentencePlan({ template: 0, words: ['달', '바다'] }, ['달', '바다']));
+  assert.equal(sentenceText(createNeutralSentence(['달', '바다'])), '‘달’과 ‘바다’가 나란히 놓였다.');
+  const known = ['새벽', '보람', '평화', '대답'];
+  const sentence = validateModelSentence({ text: '새벽부터 준비한 일을 마치고 나니 보람이 느껴졌다.', words: ['새벽', '보람'] }, known);
+  assert.ok(sentence);
+  assert.deepEqual(sentenceWords(sentence), ['새벽', '보람']);
+  for (const candidate of [null,
+    { text: '새벽에 보람을 느꼈다.', words: ['새벽', '미등록'] },
+    { text: '새벽에 보람을 느꼈다.', words: ['새벽', '새벽'] },
+    { text: '새벽에 보람을 느꼈다.', words: ['새벽', '평화'] },
+    { text: '<script>새벽과 보람이 모였다.</script>', words: ['새벽', '보람'] },
+    { text: '새벽에 보람을 느꼈다. 새벽은 밝았다.', words: ['새벽', '보람'] },
+    { text: '새벽과 보람은', words: ['새벽', '보람'] },
+    { text: '새벽에 보람을 느끼니 새벽이 반가웠다.', words: ['새벽', '보람'] },
+    { text: '새벽에 씨발이라고 외치니 보람이 없었다.', words: ['새벽', '보람'] }
+  ]) assert.equal(validateModelSentence(candidate, known), null);
 });
 
 test('removing a word removes dependent sentences in persisted state and caps a long exhibition', () =>
@@ -62,7 +72,7 @@ test('removing a word removes dependent sentences in persisted state and caps a 
 
 test('deleted words cannot return through a late model response', async () =>
 {
-  let resolve!: (sentence: ReturnType<typeof composeCloudSentence>) => void;
+  let resolve!: (sentence: ReturnType<typeof createNeutralSentence>) => void;
   let started!: () => void;
   const ready = new Promise<void>((done) => { started = done; });
   const { cloud, cleanup } = fixture({ debounceMs: 0, generate: async () =>
@@ -75,7 +85,7 @@ test('deleted words cannot return through a late model response', async () =>
     // Keep the test alive while the production debounce timer is intentionally unref'd.
     await Promise.race([ready, new Promise((_, reject) => setTimeout(() => reject(new Error('모델 시작 시간 초과')), 1000))]);
     assert.equal(cloud.snapshot().generating, true);
-    cloud.removeWord('달'); resolve(composeCloudSentence(['달', '바다'], 0, 'model'));
+    cloud.removeWord('달'); resolve(createNeutralSentence(['달', '바다']));
     await new Promise((done) => setImmediate(done));
     assert.equal(cloud.snapshot().generating, false);
     assert.equal(cloud.snapshot().sentences.length, 0);
@@ -99,6 +109,43 @@ test('failed model generation leaves usable sentences and a corrupt archive is p
     const recovered = new WordCloud({ file }); recovered.addWord('달');
     assert.equal(recovered.snapshot().storageAvailable, false);
     assert.equal(readFileSync(file, 'utf8'), '{incomplete');
+  }
+  finally { cleanup(); }
+});
+
+test('migration preserves old words and backs up fixed templates before replacing them', () =>
+{
+  const { file, cleanup } = fixture();
+  try
+  {
+    const legacy = { version: 1, words: ['새벽', '보람'], latestWord: '보람', sentences: [{ id: 'old', origin: 'template', parts: [
+      { text: '보람', source: '보람' }, { text: '이 ', source: '' }, { text: '새벽', source: '새벽' }, { text: '을 천천히 깨운다.', source: '' }
+    ] }] };
+    writeFileSync(file, JSON.stringify(legacy));
+    const upgraded = new WordCloud({ file });
+    assert.deepEqual(upgraded.snapshot().words, ['새벽', '보람']);
+    assert.equal(sentenceText(upgraded.snapshot().sentences[0]), '‘보람’과 ‘새벽’이 나란히 놓였다.');
+    assert.deepEqual(JSON.parse(readFileSync(`${file}.v1-backup`, 'utf8')), legacy);
+    upgraded.addWord('평화');
+    assert.equal(JSON.parse(readFileSync(file, 'utf8')).version, 2);
+  }
+  finally { cleanup(); }
+});
+
+test('a reviewed sentence replaces the fallback and is restored after restarting', async () =>
+{
+  const { cloud, file, cleanup } = fixture({ generate: async () => validateModelSentence({
+    text: '새벽부터 준비한 일을 마치고 나니 보람이 느껴졌다.', words: ['새벽', '보람']
+  }, ['새벽', '보람']) });
+  try
+  {
+    cloud.addWord('새벽'); cloud.addWord('보람');
+    await cloud.regenerate();
+    assert.equal(cloud.snapshot().sentences.length, 1);
+    assert.equal(cloud.snapshot().sentences[0].origin, 'model');
+    assert.deepEqual(new WordCloud({ file }).snapshot(), cloud.snapshot());
+    cloud.addWord('평화');
+    assert.equal(cloud.snapshot().sentences[0].origin, 'model');
   }
   finally { cleanup(); }
 });

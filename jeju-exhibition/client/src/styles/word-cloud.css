@@ -198,6 +198,7 @@
   opacity:1;
   filter:blur(0);
   transform:translateY(0)}
+.wc-sentence.is-long { top: 18%; font-size: clamp(22px, 2.8vw, 50px); }
 .wc-sentence .wc-slot {
   visibility:hidden;
   display:inline-block;
