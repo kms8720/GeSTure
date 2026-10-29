@@ -49,6 +49,8 @@ type RecognitionState = {
   /** 지금까지 모인 손 모양 슬롯들. 각 슬롯은 자모 후보 집합이다 */
   slots: JamoSlot[];
   slotsNeeded: number;
+  /** 단어 생성 중에도 실제 제출된 입력을 디버그 화면에서 확인한다. */
+  processingSlots: JamoSlot[];
   correction: WordCorrection | null;
   /** 전시 화면에 쌓이는 단어들 */
   words: string[];
@@ -64,6 +66,7 @@ const recognitionState: RecognitionState = {
   current: recognizePose(handState),
   slots: [],
   slotsNeeded: SLOTS_PER_WORD,
+  processingSlots: [],
   correction: null,
   words: [],
   correcting: false,
@@ -542,6 +545,7 @@ async function runCorrection(slots: JamoSlot[]): Promise<void>
   suspendRecording();
 
   recognitionState.correcting = true;
+  recognitionState.processingSlots = slots;
   recognitionState.slots = [];
   recognitionState.note = '모인 손 모양으로 단어를 만드는 중';
   broadcast();
@@ -557,6 +561,7 @@ async function runCorrection(slots: JamoSlot[]): Promise<void>
     if (startedGeneration === generation)
     {
       recognitionState.correcting = false;
+      recognitionState.processingSlots = [];
       activeCorrection = null;
 
       if (correction !== null)
@@ -588,6 +593,7 @@ function resetRecognition(): void
   suspendRecording();
   recognitionState.current = recognizePose(handState);
   recognitionState.slots = [];
+  recognitionState.processingSlots = [];
   recognitionState.correction = null;
   recognitionState.correcting = false;
   recognitionState.note = '초기화했다. 첫 손 모양을 기다리는 중';

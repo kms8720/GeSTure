@@ -110,6 +110,7 @@ export default function Monitor({ handState, controllerState, participationSumma
         {' · '}<a href="/join/qr" target="_blank" rel="noreferrer">QR 안내판</a>
         {' · '}<a href="/check" target="_blank" rel="noreferrer">휴대폰 연결 점검</a>
         {' · '}<a href="/display/word" target="_blank" rel="noreferrer">단어 구름 디스플레이</a>
+        {' · '}<a href="/display/hand?debug=1" target="_blank" rel="noreferrer">손 입력 디버그</a>
       </p>
       {network?.warning && <p className="monitor__error">{network.warning}</p>}
 

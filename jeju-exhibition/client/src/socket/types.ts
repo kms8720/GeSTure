@@ -69,6 +69,7 @@ export type RecognitionState = {
   current: PoseRecognition;
   slots: JamoSlot[];
   slotsNeeded: number;
+  processingSlots: JamoSlot[];
   correction: WordCorrection | null;
   words: string[];
   correcting: boolean;
@@ -141,6 +142,7 @@ export const INITIAL_RECOGNITION_STATE: RecognitionState = {
   },
   slots: [],
   slotsNeeded: 6,
+  processingSlots: [],
   correction: null,
   words: [],
   correcting: false,

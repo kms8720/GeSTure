@@ -73,6 +73,7 @@ export default function App()
             <HandDisplay
               handState={handState}
               recognitionState={recognitionState}
+              latestSavedWord={wordCloud.latestWord}
               serverOnline={serverOnline}
             />
           }

@@ -263,12 +263,33 @@ test('a reset or hide during generation cancels late results and repeated finali
   await until(async () => (await state()).slots.length === 1);
   const first = post('/recognition/finalize');
   await until(async () => (await state()).correcting);
+  assert.deepEqual((await state()).processingSlots, [{ classId: POSE_CLASSES[0].id, candidates: POSE_CLASSES[0].jamo }]);
   assert.equal((await post('/recognition/finalize')).status, 409);
   const before = (await state()).words.length;
   await post('/recognition/hide-word'); await first; await delay(700);
   const result = await state();
   assert.equal(result.correcting, false); assert.equal(result.correction, null);
   assert.equal(result.words.length, before); assert.equal(result.slots.length, 0);
+  assert.deepEqual(result.processingSlots, []);
+});
+
+test('debug subscribers see all submitted inputs while a word is being generated', async () =>
+{
+  modelDelay = 500;
+  const client = await connectParticipant(400);
+  let submitted: unknown;
+  client.on('recognition:state', (next) => { if (next.correcting) submitted = next.processingSlots; });
+  await post('/hand-state', POSE_CLASSES[0].flexion);
+  await until(async () => (await state()).slots.length === 1);
+  const response = post('/recognition/finalize');
+  const expected = [{ classId: POSE_CLASSES[0].id, candidates: POSE_CLASSES[0].jamo }];
+  await until(() => submitted !== undefined);
+  assert.deepEqual(submitted, expected);
+  assert.deepEqual((await state()).processingSlots, expected);
+  assert.equal((await state()).slots.length, 0);
+  assert.equal((await response).status, 200);
+  assert.deepEqual((await state()).processingSlots, []);
+  assert.deepEqual((await state()).correction.slots, expected);
 });
 
 test('unsafe model output is replaced and an operator can remove the current word from all screens', async () =>
