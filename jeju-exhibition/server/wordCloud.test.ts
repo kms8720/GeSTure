@@ -7,6 +7,7 @@ import { WordCloud, chooseSentenceWords } from './wordCloud.js';
 import { createNeutralSentence, validateModelSentence } from './sentenceComposition.js';
 import { sentenceText, sentenceWords } from '../shared/wordCloud.js';
 import { VOCABULARY } from './vocabulary.js';
+import { EXHIBITION_THEME } from '../shared/exhibitionTheme.js';
 
 function fixture(options: Partial<ConstructorParameters<typeof WordCloud>[0]> = {})
 {
@@ -341,4 +342,28 @@ test('automatic failures and verbatim repeats keep the existing sentence and ret
     assert.ok(cloud.snapshot().sentences.every((sentence) => sentence.id !== original[0].id));
   }
   finally { cleanup(); }
+});
+
+
+test('theme migration preserves words and backs up unreviewed sentences without replaying them', async () =>
+{
+  const { file, cleanup } = fixture();
+  let migrated: WordCloud | undefined;
+  try
+  {
+    const words = ['새벽', '보람', '평화', '대답'];
+    const old = { version: 2, words, latestWord: '대답', sentences: [modelSentence(['새벽', '보람'])] };
+    writeFileSync(file, JSON.stringify(old));
+    migrated = new WordCloud({ file, random: () => 0, generate: async (pair) => modelSentence(pair) });
+    assert.deepEqual(migrated.snapshot().words, words);
+    assert.equal(migrated.snapshot().latestWord, '대답');
+    assert.ok(migrated.snapshot().sentences.every((sentence) => sentence.origin === 'template'));
+    const backup = `${file}.before-${EXHIBITION_THEME.id}`;
+    assert.deepEqual(JSON.parse(readFileSync(backup, 'utf8')), old);
+    await migrated.regenerate();
+    assert.equal(JSON.parse(readFileSync(file, 'utf8')).sentenceTheme, EXHIBITION_THEME.id);
+    assert.deepEqual(new WordCloud({ file }).snapshot(), migrated.snapshot());
+    assert.deepEqual(JSON.parse(readFileSync(backup, 'utf8')), old);
+  }
+  finally { migrated?.cancelGeneration(); cleanup(); }
 });

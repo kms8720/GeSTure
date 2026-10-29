@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { WordCloudState } from '../../../shared/wordCloud';
+import { EXHIBITION_THEME } from '../../../shared/exhibitionTheme';
 import { createWordCloudScene } from '../display/wordCloudScene';
 import '../styles/word-cloud.css';
 
@@ -42,7 +43,7 @@ export default function WordDisplay({ wordCloud, serverOnline }: WordDisplayProp
       {wordCloud.words.length === 0 && <p className="wc-empty">함께 만든 첫 단어를 기다립니다</p>}
       <footer className="wc-stage-bottom">
         <span>{wordCloud.words.length} WORDS IN MOTION</span>
-        <span className="wc-stage-caption">흩어진 말들이 잠시 하나의 문장이 됩니다</span>
+        <span className="wc-stage-caption">{EXHIBITION_THEME.name}</span>
         <span className="wc-cycle-mark" aria-hidden="true">{Array.from({ length: 5 }, (_, i) => <i key={i} />)}</span>
       </footer>
       <p className="wc-sr-only">모인 단어: {wordCloud.words.join(', ') || '아직 없음'}</p>

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { CloudSentence, EMPTY_WORD_CLOUD, WordCloudState, sentenceText, sentenceWords } from '../shared/wordCloud.js';
 import { isAllowedOutput } from './wordCorrection.js';
 import { createNeutralSentence, validateModelSentence } from './sentenceComposition.js';
+import { EXHIBITION_THEME } from '../shared/exhibitionTheme.js';
 export { generateCloudSentence } from './sentenceComposition.js';
 
 const MAX_WORDS = 50;
@@ -59,6 +60,13 @@ export class WordCloud
         const backup = `${options.file}.v1-backup`;
         if (!fs.existsSync(backup)) fs.copyFileSync(options.file, backup, fs.constants.COPYFILE_EXCL);
       }
+      else if (saved.sentenceTheme !== EXHIBITION_THEME.id)
+      {
+        // 주제 검토를 거치지 않은 이전 문장은 보관만 하고 새 전시에서는 재생하지 않는다.
+        this.ensureNeutralSentence();
+        const backup = `${options.file}.before-${EXHIBITION_THEME.id}`;
+        if (!fs.existsSync(backup)) fs.copyFileSync(options.file, backup, fs.constants.COPYFILE_EXCL);
+      }
       else
       {
         for (const entry of saved.sentences)
@@ -75,7 +83,7 @@ export class WordCloud
           if (!sentences.some((sentence) => sentence.id === rebuilt.id)) sentences.push(rebuilt);
         }
       }
-      if (saved.version === 2) this.state.sentences = sentences.slice(-MAX_SENTENCES);
+      if (saved.version === 2 && saved.sentenceTheme === EXHIBITION_THEME.id) this.state.sentences = sentences.slice(-MAX_SENTENCES);
       const latest = this.state.sentences[this.state.sentences.length - 1];
       if (latest) this.lastPair = this.pairKey(sentenceWords(latest));
     }
@@ -241,7 +249,7 @@ export class WordCloud
       try
       {
         fs.mkdirSync(path.dirname(this.options.file), { recursive: true });
-        fs.writeFileSync(`${this.options.file}.tmp`, JSON.stringify({ version: 2, ...this.state, generating: false }), { mode: 0o600 });
+        fs.writeFileSync(`${this.options.file}.tmp`, JSON.stringify({ version: 2, sentenceTheme: EXHIBITION_THEME.id, ...this.state, generating: false }), { mode: 0o600 });
         fs.renameSync(`${this.options.file}.tmp`, this.options.file);
       }
       catch (error) { this.state.storageAvailable = false; console.warn('단어 구름 기록 저장 실패:', String(error)); }

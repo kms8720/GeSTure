@@ -5,8 +5,8 @@ import { generateCloudSentence, parseSentenceCandidates, selectReviewedSentence 
 import { sentenceText, sentenceWords } from '../shared/wordCloud.js';
 
 const known = ['새벽', '보람'];
-const first = { text: '새벽부터 준비한 일을 마치고 나니 보람이 느껴졌다.', words: ['새벽', '보람'], action: '준비한 일을 마치고' };
-const second = { text: '새벽에 이웃의 일을 도와주고 나니 보람이 느껴졌다.', words: ['새벽', '보람'] };
+const first = { text: '새벽에 함께 글을 읽고 서로의 생각을 나누며 보람을 느꼈다.', words: ['새벽', '보람'] };
+const second = { text: '새벽에 이웃과 글을 읽고 서로의 생각을 나누니 보람이 느껴졌다.', words: ['새벽', '보람'] };
 const originalOrigin = process.env.OLLAMA_URL;
 let calls: unknown[] = [];
 let rejectReview = false;
@@ -24,7 +24,7 @@ const mock = createServer((request, response) =>
     calls.push(JSON.parse(body));
     response.writeHead(200, { 'Content-Type': 'application/json' });
     if (stallBody || (stallReview && calls.length === 2)) { response.flushHeaders(); return; }
-    const content = calls.length === 1 ? { candidates: wrongPair ? [{ text: '서로의 대답을 듣고 나니 마음에 평화가 찾아왔다.', words: ['대답', '평화'] }] : [first, second] } : { best: rejectReview ? -1 : 1, natural: true, coherent: !rejectReview, usesWords: true };
+    const content = calls.length === 1 ? { candidates: wrongPair ? [{ text: '서로의 대답을 듣고 나니 마음에 평화가 찾아왔다.', words: ['대답', '평화'] }] : [first, second] } : { best: rejectReview ? -1 : 1, natural: true, coherent: !rejectReview, usesWords: true, themeAligned: true };
     const output = JSON.stringify({ message: { content: malformed ? '{invalid' : JSON.stringify(content) } });
     if (calls.length === 1 && firstDelay) setTimeout(() => response.end(output), firstDelay);
     else response.end(output);
@@ -52,6 +52,8 @@ test('the model writes sentences and an independent review selects the displayed
   assert.ok(writer.messages[0].content.includes('빠짐없이 사용'));
   const reviewer = calls[1] as { messages: { content: string }[] };
   assert.ok(reviewer.messages[0].content.includes('문장 편집자'));
+  assert.ok(writer.messages[0].content.includes('배리어프리'));
+  assert.ok(reviewer.messages[0].content.includes('themeAligned'));
 });
 
 test('a negative semantic review or missing review flags never publishes a candidate', async () =>
@@ -118,4 +120,23 @@ test('verbatim archived sentences are rejected before review and supplied as exa
   const writer = calls[0] as { messages: { content: string }[] };
   assert.ok(writer.messages[0].content.includes(first.text));
   assert.ok(writer.messages[0].content.includes('반복 금지'));
+});
+
+
+test('grammatical sentences without the exhibition theme never pass the review gate', () =>
+{
+  const candidates = parseSentenceCandidates({ candidates: [first, second] }, known);
+  const review = { best: 0, natural: true, coherent: true, usesWords: true };
+  assert.equal(selectReviewedSentence(review, candidates), null);
+  assert.equal(selectReviewedSentence({ ...review, themeAligned: false }, candidates), null);
+  assert.equal(selectReviewedSentence({ ...review, themeAligned: 'true' }, candidates), null);
+  assert.equal(selectReviewedSentence({ ...review, themeAligned: true }, candidates)?.id, candidates[0].id);
+});
+
+test('inflected listening and waiting actions reach semantic review', () =>
+{
+  for (const text of [
+    '새벽에 서로의 의견을 들어 함께 글을 완성하니 보람이 느껴졌다.',
+    '새벽에 서로의 차례를 기다린 뒤 함께 글을 완성하니 보람이 느껴졌다.'
+  ]) assert.equal(parseSentenceCandidates({ candidates: [{ text, words: known }] }, known).length, 1);
 });
