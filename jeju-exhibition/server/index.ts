@@ -648,5 +648,6 @@ httpServer.listen(PORT, '0.0.0.0', () =>
   void warmUpOllama().then((result) =>
   {
     console.log(`Ollama ${result.ok ? '준비됨' : '사용 불가'} (${result.elapsedMs}ms) — ${result.detail}`);
+    wordCloud.startAutoGeneration(() => !recognitionState.correcting);
   });
 });

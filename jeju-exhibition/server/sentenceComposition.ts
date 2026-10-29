@@ -98,13 +98,14 @@ async function requestModel(prompt: string, signal: AbortSignal, numPredict: num
 }
 
 /** 단어 선택은 호출자가 끝낸다. 모델은 고정된 두 단어로 문장만 작성한다. */
-export async function generateCloudSentence(words: string[], signal: AbortSignal, options: { timeoutMs?: number } = {}): Promise<CloudSentence | null>
+export async function generateCloudSentence(words: string[], signal: AbortSignal, options: { timeoutMs?: number; avoidSentences?: string[] } = {}): Promise<CloudSentence | null>
 {
   if (words.length !== 2 || new Set(words).size !== 2) return null;
   const timeout = options.timeoutMs ?? Number(process.env.SENTENCE_DEADLINE_MS ?? 18000);
   if (!Number.isFinite(timeout) || timeout <= 0) throw new Error('SENTENCE_DEADLINE_MS는 양수여야 합니다.');
   // 작성과 검토가 각각 시간을 새로 받지 않고 하나의 데드라인을 공유한다.
   const bounded = AbortSignal.any([signal, AbortSignal.timeout(timeout)]);
+  const avoidSentences = options.avoidSentences ?? [];
   const writerSchema = {
     type: 'object', properties: { candidates: { type: 'array', minItems: 2, maxItems: 2, items: {
       type: 'object', properties: {
@@ -117,6 +118,8 @@ export async function generateCloudSentence(words: string[], signal: AbortSignal
   const candidates = parseSentenceCandidates(await requestModel(`한국어 작가로서 일상에서 있을 법한 장면을 담은 짧은 문장 두 개를 쓴다.
 반드시 사용할 고정 단어 두 개: ${JSON.stringify(words)}.
 이 두 단어는 서버가 이미 무작위로 정했다. 두 후보 모두 이 두 단어를 빠짐없이 사용한다. 단어를 새로 선택하거나 다른 단어로 바꾸지 않는다.
+이전에 나온 문장(반복 금지 자료): ${JSON.stringify(avoidSentences.slice(-4))}
+이전 문장과 다른 사람·장소·행동으로 새로운 장면을 쓴다. 이전 문장을 그대로 다시 쓰지 않는다.
 문장을 쓰기 전에 scene에 누가 어디서 무엇을 하는지 구체적인 장면을 10~25자로 먼저 적는다. text는 그 장면을 표현한다.
 text에는 '글을 쓰며', '서로의 이야기를 듣고', '해변을 걸으며' 같은 눈으로 볼 수 있는 구체적인 행동을 반드시 넣는다.
 '느꼈다', '생각했다', '마음이 흩날렸다' 같은 감정 표현만 쓰지 말고 무엇을 하며 느꼈는지 표현한다.
@@ -124,7 +127,7 @@ text에는 '글을 쓰며', '서로의 이야기를 듣고', '해변을 걸으�
 단어를 억지로 주어로 만들지 말고, 사람이 경험하는 시간·장소·행동·감정으로 사용한다.
 비유와 시적 표현을 피하고 상황이 눈에 그려지게 쉽게 쓴다. 예: 이웃이 건넨 짧은 인사 덕분에 하루를 기분 좋게 시작했다.
 각 문장은 20~50자 정도로 '다.'로 끝낸다. 선택한 단어는 원형 그대로 각각 한 번만 포함한다.
-JSON만 출력한다. candidates 배열 안의 두 객체에 words(지정된 단어 두 개), scene(구체적인 장면), text(문장)를 순서대로 넣는다.`, bounded, 320, 0.35, writerSchema), words);
+JSON만 출력한다. candidates 배열 안의 두 객체에 words(지정된 단어 두 개), scene(구체적인 장면), text(문장)를 순서대로 넣는다.`, bounded, 320, 0.55, writerSchema), words).filter((candidate) => !avoidSentences.includes(candidate.parts.map((piece) => piece.text).join('')));
   if (!candidates.length) return null;
   const reviewSchema = { type: 'object', properties: {
     best: { type: 'integer', enum: [-1, 0, 1, 2] }, natural: { type: 'boolean' }, coherent: { type: 'boolean' }, usesWords: { type: 'boolean' }

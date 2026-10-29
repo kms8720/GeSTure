@@ -1,4 +1,4 @@
-import { CloudSentence, WordCloudState, sentenceText, sentenceWords } from '../../../shared/wordCloud';
+import { CloudSentence, EMPTY_WORD_CLOUD, WordCloudState, sentenceText, sentenceWords } from '../../../shared/wordCloud';
 
 const hash = (word: string): number => [...word].reduce((number, char) => (number * 31 + char.codePointAt(0)!) >>> 0, 7);
 const CYCLE_MS = 10_000;
@@ -6,7 +6,7 @@ const CYCLE_MS = 10_000;
 /** 첨부 WordCloud의 궤도 → 정렬 → 문장 → 해산 연출. React 갱신과 애니메이션 프레임을 분리한다. */
 export function createWordCloudScene(stage: HTMLElement, layer: HTMLElement, sentenceBox: HTMLElement, title: HTMLElement, announcer: HTMLElement)
 {
-  let state: WordCloudState = { words: [], latestWord: '', sentences: [], generating: false, storageAvailable: true };
+  let state: WordCloudState = structuredClone(EMPTY_WORD_CLOUD);
   const nodes = new Map<string, HTMLSpanElement>();
   let selected = new Map<string, { node: HTMLSpanElement; slot: HTMLSpanElement; surface: string }>();
   let currentSentence: CloudSentence | null = null;
@@ -161,7 +161,7 @@ export function createWordCloudScene(stage: HTMLElement, layer: HTMLElement, sen
     {
       const previousLast = state.sentences[state.sentences.length - 1]?.id;
       const nextLast = next.sentences[next.sentences.length - 1]?.id;
-      const freshResult = !!nextLast && (nextLast !== previousLast || (state.generating && !next.generating));
+      const freshResult = !!nextLast && (nextLast !== previousLast || state.sentenceRevision !== next.sentenceRevision);
       if (freshResult) pendingSentenceId = nextLast;
       else if (!next.sentences.some((sentence) => sentence.id === pendingSentenceId)) pendingSentenceId = '';
       const hadWords = state.words.length > 0;

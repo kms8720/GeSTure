@@ -11,9 +11,10 @@ const MAX_SENTENCES = 80;
 type Options = {
   file: string;
   onChange?: (state: WordCloudState) => void;
-  generate?: (words: string[], signal: AbortSignal) => Promise<CloudSentence | null>;
+  generate?: (words: string[], signal: AbortSignal, options: { avoidSentences: string[] }) => Promise<CloudSentence | null>;
   debounceMs?: number;
   random?: () => number;
+  autoGenerateMs?: number;
 };
 
 /** 새 입력은 반드시 포함하고, 나머지는 전체 기록에서 중복 없이 같은 확률로 뽑는다. */
@@ -33,6 +34,12 @@ export class WordCloud
   private timer?: ReturnType<typeof setTimeout>;
   private controller?: AbortController;
   private revision = 0;
+  private autoTimer?: ReturnType<typeof setInterval>;
+  private lastFinishedAt = 0;
+  private pairPool: string[][] = [];
+  private pairPoolWords = '';
+  private lastPair = '';
+  private removedTexts = new Set<string>();
 
   constructor(private options: Options)
   {
@@ -43,6 +50,7 @@ export class WordCloud
       if (![1, 2].includes(saved.version) || !Array.isArray(saved.words) || !Array.isArray(saved.sentences)) throw new Error('잘못된 저장 형식');
       const words: string[] = [...new Set<string>(saved.words.filter((word: unknown) => typeof word === 'string' && isAllowedOutput(word)))].slice(-MAX_WORDS);
       this.state = { ...this.state, words, latestWord: words.includes(saved.latestWord) ? saved.latestWord : words[words.length - 1] ?? '' };
+      this.state.sentenceRevision = Number.isSafeInteger(saved.sentenceRevision) && saved.sentenceRevision >= 0 ? saved.sentenceRevision : 0;
       const sentences: CloudSentence[] = [];
       if (saved.version === 1)
       {
@@ -68,6 +76,8 @@ export class WordCloud
         }
       }
       if (saved.version === 2) this.state.sentences = sentences.slice(-MAX_SENTENCES);
+      const latest = this.state.sentences[this.state.sentences.length - 1];
+      if (latest) this.lastPair = this.pairKey(sentenceWords(latest));
     }
     catch (error)
     {
@@ -77,6 +87,47 @@ export class WordCloud
   }
 
   snapshot(): WordCloudState { return structuredClone(this.state); }
+
+  /** 서버 한 곳에서만 돌린다. 화면 수와 무관하며 관객의 단어 생성 중에는 시작하지 않는다. */
+  startAutoGeneration(ready = () => true): void
+  {
+    if (this.autoTimer) return;
+    const interval = this.options.autoGenerateMs ?? 10_000;
+    if (!Number.isFinite(interval) || interval <= 0) throw new Error('문장 자동 생성 간격은 양수여야 합니다.');
+    const advance = () =>
+    {
+      if (!ready() || this.timer || this.controller || this.state.words.length < 2 || !this.options.generate ||
+          Date.now() - this.lastFinishedAt < interval) return;
+      void this.regenerate(true);
+    };
+    this.autoTimer = setInterval(advance, Math.min(interval, 1000));
+    this.autoTimer.unref();
+    advance();
+  }
+
+  stopAutoGeneration(): void
+  {
+    clearInterval(this.autoTimer);
+    this.autoTimer = undefined;
+  }
+
+  private pairKey(words: string[]): string { return words.slice().sort().join('|'); }
+
+  private nextAutomaticPair(): string[]
+  {
+    const signature = this.state.words.join('|');
+    if (signature !== this.pairPoolWords || !this.pairPool.length)
+    {
+      this.pairPoolWords = signature;
+      this.pairPool = this.state.words.flatMap((word, index) => this.state.words.slice(index + 1).map((other) => [word, other]));
+    }
+    // 한 바퀴 동안 같은 조합을 다시 뽑지 않고, 경계에서도 직전 조합을 피한다.
+    const alternatives = this.pairPool.filter((words) => this.pairKey(words) !== this.lastPair);
+    const choices = alternatives.length ? alternatives : this.pairPool;
+    const chosen = choices[Math.floor((this.options.random ?? Math.random)() * choices.length)];
+    this.pairPool.splice(this.pairPool.indexOf(chosen), 1);
+    return chosen;
+  }
 
   addWord(word: string): void
   {
@@ -96,14 +147,14 @@ export class WordCloud
     }
   }
 
-  async regenerate(): Promise<void>
+  async regenerate(automatic = false): Promise<void>
   {
     this.cancelGeneration();
     if (this.state.words.length < 2 || !this.options.generate) return;
-    const words = chooseSentenceWords(this.state.words, undefined, this.options.random);
+    const words = automatic ? this.nextAutomaticPair() : chooseSentenceWords(this.state.words, undefined, this.options.random);
     this.ensureNeutralSentence(words);
     this.publish(true);
-    await this.enrich(words);
+    await this.enrich(words, automatic);
   }
 
   removeWord(word: string): void
@@ -118,6 +169,9 @@ export class WordCloud
   removeSentence(id: string): void
   {
     this.cancelGeneration();
+    const removed = this.state.sentences.find((sentence) => sentence.id === id);
+    if (removed) this.removedTexts.add(sentenceText(removed));
+    if (this.removedTexts.size > MAX_SENTENCES) this.removedTexts.delete(this.removedTexts.values().next().value!);
     this.state.sentences = this.state.sentences.filter((sentence) => sentence.id !== id);
     this.publish(true);
   }
@@ -144,30 +198,37 @@ export class WordCloud
     this.state.sentences = this.state.sentences.filter((entry) => entry.origin === 'model' && entry.id !== sentence.id);
     this.state.sentences.push(sentence);
     this.state.sentences = this.state.sentences.slice(-MAX_SENTENCES);
+    this.state.sentenceRevision++;
   }
 
-  private async enrich(words: string[]): Promise<void>
+  private async enrich(words: string[], automatic = false): Promise<void>
   {
     const revision = this.revision;
     const controller = new AbortController();
     this.controller = controller;
+    this.lastPair = this.pairKey(words);
+    this.pairPool = this.pairPool.filter((pair) => this.pairKey(pair) !== this.lastPair);
     this.state.generating = true;
     this.publish(false);
     let result: CloudSentence | null = null;
     try
     {
-      const generated = await this.options.generate!([...words], controller.signal);
+      const avoidSentences = [...this.state.sentences.map(sentenceText), ...this.removedTexts].filter((text) => words.every((word) => text.includes(word)));
+      const generated = await this.options.generate!([...words], controller.signal, { avoidSentences });
       if (revision !== this.revision || controller.signal.aborted) return;
       result = generated && validateModelSentence({ text: sentenceText(generated), words: sentenceWords(generated) }, words);
+      if (result && avoidSentences.includes(sentenceText(result))) result = null;
     }
     catch { /* 실패해도 선택한 두 단어는 바꾸지 않고 중립적인 연결 문장을 쓴다. */ }
     finally
     {
       if (revision === this.revision)
       {
-        this.appendSentence(result ?? createNeutralSentence(words));
+        if (result) this.appendSentence(result);
+        else if (!automatic || !this.state.sentences.length) this.appendSentence(createNeutralSentence(words));
         this.controller = undefined;
         this.state.generating = false;
+        this.lastFinishedAt = Date.now();
         this.publish(true);
       }
     }

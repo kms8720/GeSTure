@@ -13,7 +13,7 @@ function fixture(options: Partial<ConstructorParameters<typeof WordCloud>[0]> = 
   const directory = mkdtempSync(path.join(tmpdir(), 'gesture-cloud-'));
   const file = path.join(directory, 'cloud.json');
   const cloud = new WordCloud({ file, ...options });
-  return { cloud, file, cleanup: () => { cloud.cancelGeneration(); rmSync(directory, { recursive: true, force: true }); } };
+  return { cloud, file, cleanup: () => { cloud.stopAutoGeneration(); cloud.cancelGeneration(); rmSync(directory, { recursive: true, force: true }); } };
 }
 
 test('real words accumulate without demo seeds, deduplicate and survive restart with their sentences', () =>
@@ -183,7 +183,7 @@ test('each input, including a repeated word, is mandatory while manual regenerat
   const calls: string[][] = [];
   const { cloud, cleanup } = fixture({ debounceMs: 0, random: () => 0, generate: async (words) =>
   {
-    calls.push(words); return createNeutralSentence(words);
+    calls.push(words); return modelSentence(words);
   } });
   try
   {
@@ -208,7 +208,7 @@ test('rejected or failed generation keeps the selected pair in its fallback even
   const { cloud, cleanup } = fixture({ debounceMs: 0, random: () => 0, generate: async (words) =>
   {
     calls++;
-    if (calls === 1) return createNeutralSentence(words);
+    if (calls === 1) return modelSentence(words);
     if (calls === 2) return createNeutralSentence(['보람', '평화']);
     throw new Error('offline');
   } });
@@ -245,6 +245,100 @@ test('a newer input cancels the old pair and ignores its late response', async (
     pending[0].resolve(createNeutralSentence(pending[0].words));
     await new Promise((done) => setImmediate(done));
     assert.deepEqual(cloud.snapshot().sentences.map(sentenceWords), [['대답', '새벽']]);
+  }
+  finally { cleanup(); }
+});
+
+
+function modelSentence(words: string[])
+{
+  const text = `${words[0]}에 관한 글을 읽고 ${words[1]}에 대해 이야기를 나누었다.`;
+  return validateModelSentence({ text, words }, words)!;
+}
+
+test('automatic generation visits every pair in random order without another input and resumes from an archive', async () =>
+{
+  const calls: string[][] = [];
+  const { cloud, file, cleanup } = fixture();
+  let restored: WordCloud | undefined;
+  try
+  {
+    for (const word of ['새벽', '보람', '평화', '대답']) cloud.addWord(word);
+    restored = new WordCloud({ file, autoGenerateMs: 5, random: () => 0, generate: async (words) =>
+    {
+      calls.push(words); return modelSentence(words);
+    } });
+    restored.startAutoGeneration();
+    await waitUntil(() => calls.length >= 7);
+    restored.stopAutoGeneration();
+    const keys = calls.map((words) => words.slice().sort().join('|'));
+    assert.equal(new Set(keys.slice(0, 6)).size, 6);
+    assert.notEqual(keys[5], keys[6]);
+    assert.ok(calls.some((words) => !words.includes('대답')));
+    assert.ok(restored.snapshot().sentences.length >= 6);
+  }
+  finally { restored?.stopAutoGeneration(); restored?.cancelGeneration(); cleanup(); }
+});
+
+test('automatic requests never overlap and new input takes priority over a pending automatic request', async () =>
+{
+  let ready = true;
+  const calls: { words: string[]; signal: AbortSignal; resolve: (sentence: ReturnType<typeof modelSentence>) => void }[] = [];
+  const { cloud, cleanup } = fixture({ autoGenerateMs: 5, debounceMs: 0, random: () => 0,
+    generate: (words, signal) => new Promise((resolve) => calls.push({ words, signal, resolve })) });
+  try
+  {
+    cloud.addWord('새벽'); cloud.addWord('보람'); cloud.cancelGeneration();
+    cloud.startAutoGeneration(() => ready);
+    cloud.startAutoGeneration(() => ready);
+    await waitUntil(() => calls.length === 1);
+    await new Promise((done) => setTimeout(done, 25));
+    assert.equal(calls.length, 1);
+    ready = false;
+    cloud.cancelGeneration();
+    await new Promise((done) => setTimeout(done, 25));
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].signal.aborted, true);
+    cloud.addWord('대답'); ready = true;
+    await waitUntil(() => calls.length === 2);
+    assert.deepEqual(calls[1].words, ['대답', '새벽']);
+    calls[0].resolve(modelSentence(calls[0].words));
+    await new Promise((done) => setImmediate(done));
+    assert.equal(cloud.snapshot().generating, true);
+    calls[1].resolve(modelSentence(calls[1].words));
+    await waitUntil(() => calls.length === 3);
+    assert.ok(cloud.snapshot().sentences.some((sentence) => sentenceWords(sentence).includes('대답')));
+  }
+  finally { cleanup(); }
+});
+
+test('automatic failures and verbatim repeats keep the existing sentence and retry later', async () =>
+{
+  let calls = 0;
+  let previousTexts: string[] = [];
+  const { cloud, cleanup } = fixture({ autoGenerateMs: 5, random: () => 0,
+    generate: async (words, _signal, options) =>
+    {
+      calls++; previousTexts = options.avoidSentences;
+      if (calls % 2 === 0) throw new Error('offline');
+      return modelSentence(words);
+    } });
+  try
+  {
+    cloud.addWord('새벽'); cloud.addWord('보람');
+    await cloud.regenerate();
+    const original = cloud.snapshot().sentences;
+    const revision = cloud.snapshot().sentenceRevision;
+    cloud.startAutoGeneration();
+    await waitUntil(() => calls >= 3 && !cloud.snapshot().generating);
+    cloud.stopAutoGeneration();
+    assert.deepEqual(cloud.snapshot().sentences, original);
+    assert.equal(cloud.snapshot().sentenceRevision, revision);
+    assert.ok(previousTexts.includes(sentenceText(original[0])));
+    cloud.removeSentence(original[0].id);
+    await cloud.regenerate();
+    assert.ok(previousTexts.includes(sentenceText(original[0])));
+    assert.ok(cloud.snapshot().sentences.every((sentence) => sentence.id !== original[0].id));
   }
   finally { cleanup(); }
 });

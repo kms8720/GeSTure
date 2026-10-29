@@ -4,12 +4,13 @@ export type WordCloudState = {
   words: string[];
   latestWord: string;
   sentences: CloudSentence[];
+  sentenceRevision: number;
   generating: boolean;
   storageAvailable: boolean;
 };
 
 export const EMPTY_WORD_CLOUD: WordCloudState = {
-  words: [], latestWord: '', sentences: [], generating: false, storageAvailable: true
+  words: [], latestWord: '', sentences: [], sentenceRevision: 0, generating: false, storageAvailable: true
 };
 
 export const sentenceText = (sentence: CloudSentence): string => sentence.parts.map((part) => part.text).join('');

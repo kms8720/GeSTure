@@ -109,3 +109,13 @@ test('the model cannot replace the randomly selected pair, omit an anchor or cho
     { text: '새벽에 이웃의 일을 도와주고 집으로 돌아왔다.', words: ['새벽'] }
   ]) assert.deepEqual(parseSentenceCandidates({ candidates: [candidate] }, known), []);
 });
+
+
+test('verbatim archived sentences are rejected before review and supplied as examples to avoid', async () =>
+{
+  assert.equal(await generateCloudSentence(known, new AbortController().signal, { avoidSentences: [first.text, second.text] }), null);
+  assert.equal(calls.length, 1);
+  const writer = calls[0] as { messages: { content: string }[] };
+  assert.ok(writer.messages[0].content.includes(first.text));
+  assert.ok(writer.messages[0].content.includes('반복 금지'));
+});

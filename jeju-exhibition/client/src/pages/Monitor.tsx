@@ -117,7 +117,7 @@ export default function Monitor({ handState, controllerState, participationSumma
       <section className="monitor__grid">
         <div className="monitor__card monitor__card--wide">
           <h2>단어 구름 · {wordCloud.words.length}개 단어 / {wordCloud.sentences.length}개 문장</h2>
-          <p>{wordCloud.generating ? '로컬 모델이 문장 후보를 작성·검토하는 중' : '모인 단어와 문장을 전시 화면에 표시 중'}</p>
+          <p>{wordCloud.generating ? '로컬 모델이 문장 후보를 작성·검토하는 중' : wordCloud.words.length >= 2 ? '다음 무작위 조합의 새 문장을 자동으로 준비합니다' : '단어가 두 개 모이면 문장 자동 생성을 시작합니다'}</p>
           <button type="button" disabled={busy || !authorized || !serverOnline || correcting || wordCloud.generating || wordCloud.words.length < 2}
             onClick={() => post('/word-cloud/regenerate')}>문장 다시 구성</button>
           {!wordCloud.storageAvailable && <p className="monitor__error" role="alert">단어 구름 기록을 저장하지 못했습니다. 서버의 저장 경로와 권한을 확인해 주세요.</p>}
