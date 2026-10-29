@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
+import { WordCloudState, sentenceText } from '../../../shared/wordCloud';
+import { EXHIBITION_THEME } from '../../../shared/exhibitionTheme';
 import {
   ControllerState,
   FINGER_LABELS,
   FINGER_ORDER,
   HandState,
+  NetworkInfo,
+  ParticipationSummary,
   PoseClass,
   RecognitionState
 } from '../socket/types';
@@ -11,9 +15,11 @@ import {
 type MonitorProps = {
   handState: HandState;
   controllerState: ControllerState;
+  participationSummary: ParticipationSummary;
   recognitionState: RecognitionState;
   poseClasses: PoseClass[];
   serverOnline: boolean;
+  wordCloud: WordCloudState;
 };
 
 /**
@@ -22,11 +28,15 @@ type MonitorProps = {
  * ACC 버전에서 미구현으로 남아 있던 reset과 강제 확정 버튼을 여기 넣었다.
  * 관객이 손 모양을 다 채우지 않고 떠났을 때 운영자가 끊어줄 수단이 필요하다.
  */
-export default function Monitor({ handState, controllerState, recognitionState, poseClasses, serverOnline }: MonitorProps)
+export default function Monitor({ handState, controllerState, participationSummary, recognitionState, poseClasses, serverOnline, wordCloud }: MonitorProps)
 {
   const { current, slots, slotsNeeded, correction, words, correcting, note, updatedAt } = recognitionState;
   const [busy, setBusy] = useState(false);
   const [health, setHealth] = useState<string>('확인 중');
+  const [operatorToken, setOperatorToken] = useState('');
+  const [authorized, setAuthorized] = useState(false);
+  const [error, setError] = useState('');
+  const [network, setNetwork] = useState<NetworkInfo | null>(null);
 
   useEffect(() =>
   {
@@ -34,14 +44,30 @@ export default function Monitor({ handState, controllerState, recognitionState, 
       .then((response) => response.json())
       .then((data) => setHealth(`포즈 클래스 ${data.poseClasses}개, 포트 ${data.port}`))
       .catch((error) => setHealth(`확인 실패: ${error}`));
-  }, []);
+    fetch('/network-info').then((response) => response.json()).then(setNetwork).catch(() => setNetwork(null));
+  }, [serverOnline]);
 
-  const post = async (url: string): Promise<void> =>
+  const post = async (url: string, body?: unknown): Promise<void> =>
   {
     setBusy(true);
+    setError('');
     try
     {
-      await fetch(url, { method: 'POST' });
+      const response = await fetch(url, {
+        method: 'POST', headers: { Authorization: `Bearer ${operatorToken}`, 'Content-Type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body)
+      });
+      const result = await response.json();
+      if (!response.ok)
+      {
+        if (response.status === 401 || response.status === 503) setAuthorized(false);
+        throw new Error(result.error ?? `요청 실패 (${response.status})`);
+      }
+      if (url === '/operator/session') setAuthorized(true);
+    }
+    catch (error)
+    {
+      setError((error as Error).message);
     }
     finally
     {
@@ -54,19 +80,59 @@ export default function Monitor({ handState, controllerState, recognitionState, 
       <header className="monitor__head">
         <h1>운영 모니터</h1>
         <div className="monitor__actions">
-          <button type="button" disabled={busy} onClick={() => post('/recognition/reset')}>초기화</button>
-          <button type="button" disabled={busy || slots.length === 0} onClick={() => post('/recognition/finalize')}>
+          <button type="button" disabled={busy || !authorized || !serverOnline} onClick={() => post('/recognition/reset')}>초기화</button>
+          <button type="button" disabled={busy || !authorized || !serverOnline || correcting || slots.length === 0} onClick={() => post('/recognition/finalize')}>
             지금까지로 단어 만들기
           </button>
+          <button type="button" disabled={busy || !authorized || !serverOnline || (!correction && !correcting)} onClick={() => post('/recognition/hide-word')}>지금 단어 내리기</button>
         </div>
         <span className={`monitor__status ${serverOnline ? 'is-online' : 'is-offline'}`}>
           {serverOnline ? 'ONLINE' : 'OFFLINE'}
         </span>
       </header>
 
-      <p className="monitor__health">{health} · 마지막 갱신 {updatedAt || '-'}</p>
+      {!authorized ? (
+        <form className="monitor__login" onSubmit={(event) => { event.preventDefault(); void post('/operator/session'); }}>
+          <label htmlFor="operator-key">운영자 키</label>
+          <input id="operator-key" type="password" autoComplete="current-password" value={operatorToken}
+            onChange={(event) => setOperatorToken(event.target.value)} required />
+          <button disabled={busy || !serverOnline} type="submit">운영 기능 열기</button>
+          <span>전시 서버의 .env에 설정한 키를 입력합니다.</span>
+        </form>
+      ) : <button type="button" onClick={() => { setAuthorized(false); setOperatorToken(''); }}>운영 기능 잠그기</button>}
+      {error && <p className="monitor__error" role="alert">{error}</p>}
+
+      <p className="monitor__health">
+        {health} · 참여 {participationSummary.connectedCount}명 · 점유 {participationSummary.occupiedCount}/5
+        {' · '}대기 {participationSummary.waitingCount}명 · 마지막 갱신 {updatedAt || '-'}
+      </p>
+      <p className="monitor__health">
+        참여 주소: {network?.joinUrl ?? '설정 필요'} · Wi-Fi: {network?.wifiSsid || '설정 필요'}
+        {' · '}<a href="/join/qr" target="_blank" rel="noreferrer">QR 안내판</a>
+        {' · '}<a href="/check" target="_blank" rel="noreferrer">휴대폰 연결 점검</a>
+        {' · '}<a href="/display/word" target="_blank" rel="noreferrer">단어 구름 디스플레이</a>
+        {' · '}<a href="/display/hand?debug=1" target="_blank" rel="noreferrer">손 입력 디버그</a>
+      </p>
+      {network?.warning && <p className="monitor__error">{network.warning}</p>}
 
       <section className="monitor__grid">
+        <div className="monitor__card monitor__card--wide">
+          <h2>단어 구름 · {wordCloud.words.length}개 단어 / {wordCloud.sentences.length}개 문장</h2>
+          <p>제주 배리어프리 전시 · {EXHIBITION_THEME.name}</p>
+          <p>{wordCloud.generating ? '로컬 모델이 문장 후보를 작성·검토하는 중' : wordCloud.words.length >= 2 ? '다음 무작위 조합의 새 문장을 자동으로 준비합니다' : '단어가 두 개 모이면 문장 자동 생성을 시작합니다'}</p>
+          <button type="button" disabled={busy || !authorized || !serverOnline || correcting || wordCloud.generating || wordCloud.words.length < 2}
+            onClick={() => post('/word-cloud/regenerate')}>문장 다시 구성</button>
+          {!wordCloud.storageAvailable && <p className="monitor__error" role="alert">단어 구름 기록을 저장하지 못했습니다. 서버의 저장 경로와 권한을 확인해 주세요.</p>}
+          <ul className="monitor__cloud-words">
+            {wordCloud.words.map((word) => <li key={word}>{word} <button type="button" disabled={busy || !authorized || !serverOnline}
+              aria-label={`${word} 단어 내리기`} onClick={() => post('/word-cloud/remove-word', { word })}>내리기</button></li>)}
+          </ul>
+          <ol className="monitor__cloud-sentences">
+            {wordCloud.sentences.map((sentence) => <li key={sentence.id}>{sentenceText(sentence)} <small>({sentence.origin === 'model' ? 'AI 작성·검토' : '기본 연결 문장'})</small> <button type="button"
+              disabled={busy || !authorized || !serverOnline} aria-label={`${sentenceText(sentence)} 문장 내리기`}
+              onClick={() => post('/word-cloud/remove-sentence', { id: sentence.id })}>내리기</button></li>)}
+          </ol>
+        </div>
         <div className="monitor__card">
           <h2>손가락</h2>
           <table>
@@ -75,7 +141,22 @@ export default function Monitor({ handState, controllerState, recognitionState, 
                 <tr key={finger}>
                   <td>{FINGER_LABELS[finger]}</td>
                   <td className="num">{handState[finger]}</td>
-                  <td>{controllerState[finger] ? '조종기 연결' : '조종기 없음'}</td>
+                  <td>{{
+                    available: '빈 자리',
+                    connected: '관객 연결',
+                    reconnecting: '재접속 대기'
+                  }[controllerState[finger].status]}</td>
+                  <td>
+                    {controllerState[finger].status !== 'available' && (
+                      <button
+                        type="button"
+                        disabled={busy || !authorized || !serverOnline}
+                        onClick={() => post(`/participants/${finger}/release`)}
+                      >
+                        자리 반환
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
