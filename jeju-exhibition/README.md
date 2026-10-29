@@ -3,6 +3,9 @@
 ACCxGMAP 본 전시와 별개로 진행하는 **제주 전시 전용 서브프로젝트**다.
 기존 `virtual-hand-rigged-final/`(ACC용)은 건드리지 않는다.
 
+**Mac mini에서 이어받는 세션:** [실행 준비·현재 동작·남은 테스트](docs/mac-mini-handoff.md)를 먼저 읽는다.
+2026-10-29부터 실행·실기 테스트는 Mac mini에서 진행하며, 이전 개발 Mac에서는 서버를 다시 켜지 않는다.
+
 ## ACC 버전과 무엇이 다른가
 
 | | ACC (`virtual-hand-rigged-final/`) | 제주 (여기) |
