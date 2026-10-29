@@ -12,7 +12,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
     "test": "tsx --test server/*.test.ts",
     "setup": "node scripts/setup-exhibition.mjs",
-    "check:network": "tsx scripts/check-network.ts"
+    "check:network": "tsx scripts/check-network.ts",
+    "demo:word": "tsx scripts/demo-word.ts"
   },
   "engines": { "node": ">=22.18.0" },
   "dependencies": {
