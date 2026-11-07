@@ -1,14 +1,20 @@
 # HANDOFF
 
-## 2026-10-29 Mac mini로 테스트 이관 — 다음 세션은 여기부터
+## 2026-11-07 GitHub main 병합 및 이후 작업 규칙
+
+휴대폰 QR 조종과 워드클라우드 구현 PR [#23](https://github.com/kms8720/GeSTure/pull/23)을 `main`에 병합했다. 병합 커밋은 `b316c54`다.
+이후 작업과 Mac mini 동기화는 최신 `main`을 기준으로 한다. 사용자 지시에 따라 앞으로의 변경도 커밋·푸시와 원격 `main` 반영까지 완료한다.
+세부 작업 규칙은 [AGENTS.md](AGENTS.md)에 기록했다. 앱·모델·실기 검증은 계속 Mac mini에서 진행한다.
+
+## 2026-10-29 Mac mini로 테스트 이관
 
 사용자 지시: **앞으로 실행·실기 테스트는 Mac mini에서 진행한다. 기존 개발 Mac에서는 전시 서버를 켜지 않는다.**
 기존 개발 Mac의 전시 서버를 종료했고 TCP 3002 리스너가 없음을 확인했다.
 이번 이관에서는 문서와 GitHub 동기화만 수행했으며 앱·모델·자동 테스트를 새로 실행하지 않았다.
 
 다음 AI 세션은 [Mac mini 인수인계](jeju-exhibition/docs/mac-mini-handoff.md)를 먼저 읽는다.
-브랜치는 `feat/mobile-qr-controllers`, PR은 [#23](https://github.com/kms8720/GeSTure/pull/23)이며 아직 병합하지 않았다.
-기능 기준 커밋은 `58dc1fb`다. 이어지는 문서 커밋까지 브랜치 최신 상태로 받아 작업한다.
+당시 작업 브랜치는 `feat/mobile-qr-controllers`였으며 PR [#23](https://github.com/kms8720/GeSTure/pull/23)은 2026-11-07 `main`에 병합했다.
+당시 기능 기준 커밋은 `58dc1fb`다. 현재는 이후 문서 변경까지 포함된 최신 `main`을 받아 작업한다.
 실행 설정·모델·관객 기록은 Git에 없으므로 GitHub에서 코드를 받았다고 환경과 기록까지 옮겨진 것은 아니다.
 특히 이전 Mac의 IP를 재사용하지 말고 Mac mini의 LAN 주소로 QR을 설정해야 한다.
 
