@@ -395,7 +395,7 @@
   ],
   "legacyIndex": {
     "sourceSha256": "ddda0a9da978214ab5372d0b81e23bb939cf5dc594fdb56f8cb182fcb6b9b8d5",
-    "sourcePath": "virtual-hand-rigged-final/public/models/robot_hand_rig.glb",
+    "sourcePath": "jeju-exhibition/model-sources/reference_hand.glb",
     "sourceNodes": [
       "index_03",
       "index_02",

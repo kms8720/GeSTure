@@ -118,8 +118,6 @@ export function recognizePose(handState: HandState): PoseRecognition
 /**
  * 관객 5명이 동시에 슬라이더를 움직이면 경계 근처에서 클래스가 빠르게 튄다.
  * 같은 클래스가 holdMs 동안 연속으로 유지될 때만 확정으로 승격시킨다.
- *
- * ACC 버전에서 미해결로 남아 있던 debounce 항목을 여기서는 인식기 안에 넣었다.
  */
 export class PoseStabilizer
 {

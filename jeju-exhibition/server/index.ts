@@ -76,7 +76,6 @@ const recognitionState: RecognitionState = {
 
 /**
  * reset과 진행 중인 LLM 호출이 겹치면 이미 버려진 입력의 결과가 새 상태에 덮어써진다.
- * ACC 버전은 이 경합이 열려 있다(index.ts:179-184 가 correctionInFlight 를 그냥 false 로 되돌린다).
  * 세대 번호를 두고, 응답이 돌아왔을 때 세대가 바뀌었으면 결과를 버린다.
  */
 let generation = 0;

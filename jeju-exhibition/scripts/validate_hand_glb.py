@@ -9,7 +9,7 @@ import struct
 
 LEGACY_INDEX_NODES = ('index_base_pivot', 'index_middle_pivot', 'index_tip_pivot', 'index_03', 'index_02', 'index_01')
 LEGACY_INDEX_PARTS = {'index_03': 36870, 'index_02': 33885, 'index_01': 6106}
-DEFAULT_DONOR = Path(__file__).resolve().parents[2] / 'virtual-hand-rigged-final/public/models/robot_hand_rig.glb'
+DEFAULT_DONOR = Path(__file__).resolve().parents[1] / 'model-sources/reference_hand.glb'
 
 
 def read_glb(path):

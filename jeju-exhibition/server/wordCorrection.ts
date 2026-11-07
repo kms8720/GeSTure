@@ -31,8 +31,7 @@ const OLLAMA_URL = (process.env.OLLAMA_URL ?? 'http://127.0.0.1:11434').replace(
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'qwen2.5:7b-instruct';
 
 /**
- * ACC 버전은 fetch에 타임아웃이 없어서 Ollama가 연결만 받고 멈추면 전시 화면이
- * 무한정 정지한다(binaryJamo.ts:294). 여기서는 반드시 상한을 둔다.
+ * Ollama가 연결만 받고 응답하지 않아도 전시가 무한정 대기하지 않도록 상한을 둔다.
  *
  * 값이 20초인 이유: 실측상 모델이 메모리에 올라간 뒤에는 7초 안팎이지만,
  * 콜드 로드가 걸린 첫 호출은 12초를 넘겼다. 예열(warmUpOllama)을 하더라도
@@ -205,7 +204,7 @@ JSON만 출력:
  * LLM이 목록 밖 단어를 제안했을 때 그것이 실재하는 일상 단어인지 한 번 더 묻는다.
  *
  * 필요한 이유: 완성형 한글 1~4글자라는 정규식만으로는 `습수`, `섭시` 같은 비단어가
- * 그대로 통과한다. ACC 버전이 `병천`으로 겪었던 것과 같은 실패다.
+ * 그대로 통과하므로 의미를 추가로 검토한다.
  * 목록 안에서 고른 경우에는 이 호출을 건너뛰므로 평상시 지연은 늘지 않는다.
  */
 function buildRealWordCheckPrompt(word: string): string

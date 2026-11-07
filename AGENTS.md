@@ -1,5 +1,10 @@
 # GeSTure 작업 규칙
 
+## 프로젝트 범위
+
+- 이 저장소는 `jeju-exhibition/`을 중심으로 제주 참여형 전시를 개발한다.
+- 전시에 필요한 기준 손 모델과 실측 자모 자료는 각각 `jeju-exhibition/model-sources/`, `jeju-exhibition/reference/`에서 관리한다. 삭제한 별도 전시 앱이나 실험 폴더에 의존성을 다시 만들지 않는다.
+
 ## GitHub main 반영
 
 2026-11-07 사용자 지시: 앞으로 변경 사항은 GitHub `main` 반영까지 완료한다.

@@ -1,6 +1,6 @@
 // 이 파일은 생성물이다. 직접 수정하지 말고 docs/pose-derivation.md의 절차로 재생성하라.
 //
-// 출처: jamo-recognition/data/reference_samples.jsonl
+// 출처: jeju-exhibition/reference/reference_samples.jsonl
 //       31개 자모 x 20샘플 = 620개 실측 MediaPipe 손 landmark (2026-06-02 캡처)
 //
 // 파생 과정:
