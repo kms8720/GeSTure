@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { socket } from '../socket/socket';
 import FingerSlider from '../components/FingerSlider';
 import {
   FINGER_LABELS,
   FINGER_ORDER,
+  FINGER_STATION,
   HandState,
   ParticipantState
 } from '../socket/types';
@@ -21,17 +22,19 @@ function createToken(): string
   return crypto.randomUUID?.() ?? `${Date.now()}-${crypto.getRandomValues(new Uint32Array(4)).join('-')}`;
 }
 
-function loadToken(): string
+function loadToken(previewKey?: string): string
 {
   try
   {
-    const stored = localStorage.getItem(SESSION_KEY);
+    const storage = previewKey ? sessionStorage : localStorage;
+    const key = previewKey ?? SESSION_KEY;
+    const stored = storage.getItem(key);
     if (stored && /^[A-Za-z0-9_-]{16,128}$/.test(stored))
     {
       return stored;
     }
     const created = createToken();
-    localStorage.setItem(SESSION_KEY, created);
+    storage.setItem(key, created);
     return created;
   }
   catch
@@ -40,11 +43,11 @@ function loadToken(): string
   }
 }
 
-function forgetToken(): void
+function forgetToken(previewKey?: string): void
 {
   try
   {
-    localStorage.removeItem(SESSION_KEY);
+    (previewKey ? sessionStorage : localStorage).removeItem(previewKey ?? SESSION_KEY);
   }
   catch
   {
@@ -55,10 +58,14 @@ function forgetToken(): void
 export default function Controller({ handState, serverOnline }: ControllerProps)
 {
   const [searchParams] = useSearchParams();
-  const rawFinger = searchParams.get('finger');
+  const { finger: pathFinger } = useParams();
+  const rawFinger = pathFinger ?? searchParams.get('finger');
   const requestedFinger = FINGER_ORDER.find((finger) => finger === rawFinger);
   const invalidFinger = rawFinger !== null && !requestedFinger;
-  const [token, setToken] = useState(loadToken);
+  const preview = searchParams.get('preview') === '1' && !!requestedFinger;
+  // The five overview frames need separate roles without replacing a phone's participant token.
+  const previewKey = preview ? `${SESSION_KEY}-preview-${requestedFinger}` : undefined;
+  const [token, setToken] = useState(() => loadToken(previewKey));
   const [participant, setParticipant] = useState<ParticipantState | null>(null);
   const [error, setError] = useState('');
   const finished = useRef(false);
@@ -99,7 +106,7 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
   {
     finished.current = true;
     socket.emit('participant:leave');
-    forgetToken();
+    forgetToken(previewKey);
     setParticipant({
       status: 'released',
       finger: null,
@@ -112,7 +119,7 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
   {
     finished.current = false;
     setError('');
-    const nextToken = loadToken();
+    const nextToken = loadToken(previewKey);
     setParticipant(null);
     setToken(nextToken);
     if (nextToken === token && socket.connected)
@@ -195,9 +202,24 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
   };
 
   return (
-    <main className={`controller-screen controller-screen--control controller-screen--${finger}`}>
-      <h1 id="controller-finger-name" className="controller-name">{FINGER_LABELS[finger]}</h1>
+    <main className={`controller-screen controller-screen--control controller-screen--${finger}${preview ? ' controller-screen--preview' : ''}`}>
+      {preview && <header className="exhibition-masthead">
+        <span className="exhibition-mark">GeSTure<span className="exhibition-mark__dot">.</span></span>
+        <span className="controller-station">0{FINGER_STATION[finger]} <span>/ 05</span></span>
+      </header>}
+      <div className="controller-heading">
+        <h1 id="controller-finger-name" className="controller-name">{FINGER_LABELS[finger]}</h1>
+        {preview && <p className="controller-instruction">천천히 움직이고, 잠시 머물러 보세요.</p>}
+      </div>
       <FingerSlider key={finger} value={value} onChange={send} />
+      {preview && <div className="controller-bottom">
+        <div className="controller-quick">
+          <button type="button" onClick={() => send(0)}>완전히 접기</button>
+          <button type="button" onClick={() => send(50)}>반쯤</button>
+          <button type="button" onClick={() => send(100)}>완전히 펴기</button>
+        </div>
+        <button className="controller-release" type="button" onClick={leave}>조종 자리 비우기</button>
+      </div>}
     </main>
   );
 }

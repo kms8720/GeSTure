@@ -123,6 +123,19 @@ test('all mutation routes require an operator key while public participation sta
   assert.equal(states.get(participant)?.finger, 'thumb');
 });
 
+test('cloud JSON snapshots do not consume the standalone exhibition document route', async () =>
+{
+  const api = await fetch(url + '/word-cloud');
+  assert.equal(api.status, 200);
+  assert.ok(Array.isArray((await api.json()).wordCloud.words));
+  const legacyApi = await fetch(url + '/word-cloud-state');
+  assert.equal(legacyApi.status, 200);
+  assert.ok(Array.isArray((await legacyApi.json()).wordCloudState.words));
+  const display = await fetch(url + '/word-cloud/');
+  // With no build present Express returns HTML 404; a built app serves the exhibit HTML.
+  assert.ok(!display.headers.get('content-type')?.includes('application/json'));
+});
+
 test('missing operator configuration keeps mutations locked instead of accepting an empty key', async () =>
 {
   await stopApp(); await startApp('');

@@ -19,7 +19,8 @@ test('setup generates a private operator key from the blank template and preserv
     const first = readFileSync(file, 'utf8');
     const key = first.match(/^OPERATOR_TOKEN=([a-f0-9]{64})$/m)?.[1];
     assert.ok(key); assert.ok(!output.includes(key));
-    assert.equal(statSync(file).mode & 0o777, 0o600);
+    // Windows reports inherited ACLs through mode bits; POSIX owner-only bits are not available.
+    if (process.platform !== 'win32') assert.equal(statSync(file).mode & 0o777, 0o600);
     run(); assert.equal(readFileSync(file, 'utf8'), first);
     writeFileSync(file, 'PUBLIC_ORIGIN=http://192.168.50.10:3002\nOPERATOR_TOKEN=""\n');
     run();

@@ -172,10 +172,17 @@ app.get('/recognition-state', (_request, response) =>
   response.json({ ok: true, recognitionState });
 });
 
-app.get('/word-cloud', (_request, response) =>
+// The trailing-slash route serves the exhibition HTML, not the JSON API.
+app.get(/^\/word-cloud$/, (_request, response) =>
 {
   response.setHeader('Cache-Control', 'no-store');
   response.json({ ok: true, wordCloud: wordCloud.snapshot() });
+});
+
+app.get('/word-cloud-state', (_request, response) =>
+{
+  response.setHeader('Cache-Control', 'no-store');
+  response.json({ ok: true, wordCloudState: wordCloud.snapshot() });
 });
 
 app.post('/word-cloud/regenerate', async (_request, response) =>

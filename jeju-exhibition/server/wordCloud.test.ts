@@ -54,6 +54,23 @@ test('free sentences link exact collected words and reject invalid or repeated a
   ]) assert.equal(validateModelSentence(candidate, known), null);
 });
 
+test('nested input words need separate animation slots and the original text is preserved', () =>
+{
+  const words = ['별', '별빛'];
+  const text = '별빛을 따라 걷던 사람들은 별을 바라보았다.';
+  const result = validateModelSentence({ text, words }, words);
+  assert.ok(result);
+  assert.equal(sentenceText(result), text);
+  assert.deepEqual(sentenceWords(result), ['별빛', '별']);
+  assert.equal(validateModelSentence({ text: '별빛을 따라 걷던 사람들은 하늘을 바라보았다.', words }, words), null);
+});
+
+test('mixed scripts and the observed informal sentence ending are rejected', () =>
+{
+  for (const text of ['행복한 사랑이 마음에 남게 되요.', '행복한 사랑이 心에 깊이 남았다.'])
+    assert.equal(validateModelSentence({ text, words: ['행복', '사랑'] }, ['행복', '사랑']), null);
+});
+
 test('removing a word removes dependent sentences in persisted state and caps a long exhibition', () =>
 {
   const { cloud, file, cleanup } = fixture();

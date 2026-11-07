@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Controller from './pages/Controller';
+import Exhibition from './pages/Exhibition';
 import ConnectionCheck from './pages/ConnectionCheck';
 import HandDisplay from './pages/HandDisplay';
 import JoinQr from './pages/JoinQr';
 import Monitor from './pages/Monitor';
 import WordDisplay from './pages/WordDisplay';
+import WordCloudDisplay from './pages/WordCloudDisplay';
 import { socket } from './socket/socket';
 import { EMPTY_WORD_CLOUD, WordCloudState } from '../../shared/wordCloud';
 import {
@@ -66,6 +68,9 @@ export default function App()
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<Navigate to="/exhibition" replace />} />
+        <Route path="/exhibition" element={<Exhibition serverOnline={serverOnline} recognitionState={recognitionState} wordCloudState={wordCloud} />} />
+        <Route path="/display/latest-word" element={<WordDisplay recognitionState={recognitionState} serverOnline={serverOnline} />} />
         {/* 손 화면과 단어 화면은 서로 다른 디스플레이에 띄운다 */}
         <Route
           path="/display/hand"
@@ -80,7 +85,7 @@ export default function App()
         />
         <Route
           path="/display/word"
-          element={<WordDisplay wordCloud={wordCloud} serverOnline={serverOnline} />}
+          element={<WordCloudDisplay wordCloud={wordCloud} serverOnline={serverOnline} />}
         />
         <Route path="/display" element={<Navigate to="/display/hand" replace />} />
         <Route path="/join" element={<Controller handState={handState} serverOnline={serverOnline} />} />
@@ -89,7 +94,7 @@ export default function App()
           path="/join/qr"
           element={<JoinQr serverOnline={serverOnline} participationSummary={participationSummary} controllerState={controllerState} />}
         />
-        <Route path="/control/:finger" element={<Navigate to="/join" replace />} />
+        <Route path="/control/:finger" element={<Controller handState={handState} serverOnline={serverOnline} />} />
         <Route
           path="/monitor"
           element={

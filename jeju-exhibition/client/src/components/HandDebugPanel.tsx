@@ -36,6 +36,7 @@ export default function HandDebugPanel({ recognitionState, latestSavedWord, serv
         <strong>{latestWord || '아직 생성 전'}</strong>
         {!correction && words.length === 0 && latestSavedWord && <p>저장된 이전 단어 · 입력 상세 없음</p>}
         {correction && <p>선택 자모 · {correction.chosenJamo.join(' ')}<br />
+          입력 자모 {correction.inputJamoCount}개 반영 · {correction.source === 'llm' ? 'AI' : '단어장'} 보완 {correction.supplementedJamoCount}개<br />
           {correction.source === 'llm' ? '로컬 모델' : correction.source === 'vocabulary' ? '단어장 대체' : '생성 결과 없음'} · {correction.elapsedMs}ms</p>}
       </section>
       <p className="hand-debug__note">{note}</p>

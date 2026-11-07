@@ -10,7 +10,8 @@ export default defineConfig({
     strictPort: true,
     proxy: Object.fromEntries([
       '/socket.io', '/health', '/network-info', '/operator', '/hand-state', '/pose-classes',
-      '/recognition-state', '/recognition/', '/participants/', '/word-correction', '/vocabulary-match', '/word-cloud'
+      '/recognition-state', '/recognition/', '/participants/', '/word-correction', '/vocabulary-match',
+      '^/word-cloud(?:[?]|$)', '/word-cloud-state', '/word-cloud/regenerate', '/word-cloud/remove-word', '/word-cloud/remove-sentence'
     ].map((prefix) => [prefix, { target: `http://127.0.0.1:${process.env.PORT ?? 3002}`, ws: true }]))
   },
   build: {

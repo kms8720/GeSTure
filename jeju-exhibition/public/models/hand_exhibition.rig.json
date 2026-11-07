@@ -1,0 +1,420 @@
+{
+  "version": 2,
+  "sourceSha256": "a9fc3b4cbce849f6101ee870daacb093d96948a5d4c551d8f4697e7471a09912",
+  "fingers": {
+    "pinky": {
+      "pivots": [
+        "pinky_base_pivot",
+        "pinky_middle_pivot",
+        "pinky_tip_pivot"
+      ],
+      "axes": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "angles": [
+        0.95,
+        1.0,
+        0.7
+      ]
+    },
+    "ring": {
+      "pivots": [
+        "ring_base_pivot",
+        "ring_middle_pivot",
+        "ring_tip_pivot"
+      ],
+      "axes": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "angles": [
+        1.0,
+        1.05,
+        0.75
+      ]
+    },
+    "middle": {
+      "pivots": [
+        "middle_base_pivot",
+        "middle_middle_pivot",
+        "middle_tip_pivot"
+      ],
+      "axes": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "angles": [
+        1.0,
+        1.05,
+        0.75
+      ]
+    },
+    "thumb": {
+      "pivots": [
+        "thumb_base_pivot",
+        "thumb_middle_pivot"
+      ],
+      "axes": [
+        [
+          0.5,
+          0,
+          0.866
+        ],
+        [
+          0.5,
+          0,
+          0.866
+        ]
+      ],
+      "angles": [
+        0.55,
+        0.8
+      ]
+    },
+    "index": {
+      "pivots": [
+        "index_base_pivot",
+        "index_middle_pivot",
+        "index_tip_pivot"
+      ],
+      "axes": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "angles": [
+        1.08,
+        1.36,
+        1.08
+      ]
+    }
+  },
+  "sourceTriangles": 1861441,
+  "displayTriangles": 414180,
+  "segments": [
+    {
+      "name": "palm",
+      "source": "hand-color",
+      "sourceTriangles": 1539136,
+      "sourceTriangleIdHash": "0a2bd3a0ba4c8fa94e8750949a294347480c02f22e38e52f4bb85a02d9e0d8e1",
+      "sourceVertexHash": "6d801c742868b480189d38fabd5b5b2be2f77d5354855cdd2c7e958619d00b5e"
+    },
+    {
+      "name": "pinky_proximal",
+      "source": "hand-color",
+      "sourceTriangles": 33293,
+      "sourceTriangleIdHash": "9dfd4ae604774c83ddaa76923a3cd356022e578f19e63dddbe90fd47ec60de64",
+      "sourceVertexHash": "42a18e1c06602ac9749918c34462e468799518505c1d42717d3e782e5348d6f6"
+    },
+    {
+      "name": "pinky_intermediate",
+      "source": "hand-color",
+      "sourceTriangles": 21246,
+      "sourceTriangleIdHash": "b2e85e498d0349e101da3409a2fe6d5fe48859d17e0a22f43f692b47714ee355",
+      "sourceVertexHash": "0976b4c411d92f666953045a1b131e330c60ffa2934ecbe00962db4b0bf5fadf"
+    },
+    {
+      "name": "pinky_distal",
+      "source": "hand-color",
+      "sourceTriangles": 9110,
+      "sourceTriangleIdHash": "94f87be706674bc552482f0de48118ff3de81c872f28c7b039cf2a0b7858e4e0",
+      "sourceVertexHash": "eac33e0ec884f2d5d3b337d562eb03bd04273f5cd593f3428171ab0ac99dc429"
+    },
+    {
+      "name": "ring_proximal",
+      "source": "hand-color",
+      "sourceTriangles": 37460,
+      "sourceTriangleIdHash": "a6f19bf5725b97923f07483ae01bab3fa688ac54e8a5d12d548cc19d192443f8",
+      "sourceVertexHash": "a20d5c7a0f901e9fc5544ca1e89df778ee1b349a37fd460cdf1b7fad6e2e6d60"
+    },
+    {
+      "name": "ring_intermediate",
+      "source": "hand-color",
+      "sourceTriangles": 21346,
+      "sourceTriangleIdHash": "00c351d3e14b57f1e1bc0c11f4f7cdafef254060ebab497f954298606496d2a5",
+      "sourceVertexHash": "37d25c993c9f6b955ba71fe24955bea717369e6558a094d1e332638f98c7ad6b"
+    },
+    {
+      "name": "ring_distal",
+      "source": "hand-color",
+      "sourceTriangles": 10341,
+      "sourceTriangleIdHash": "19f19c6dfdce95aa854d7b036ed4c50c54b956f4460ecb03be391c0c46053444",
+      "sourceVertexHash": "1102559e877bba85c442eed6652f7ed188646202fffa37bfa0e4fe65b92710ba"
+    },
+    {
+      "name": "middle_proximal",
+      "source": "hand-color",
+      "sourceTriangles": 36544,
+      "sourceTriangleIdHash": "42bab10978fbea16e9c214a2fde654e2765868869581e3a8eb32ed037c6bdb39",
+      "sourceVertexHash": "c63c504226e0cc4f66ac0753815f3fcccfeb285c606b057df2f316ea82cac426"
+    },
+    {
+      "name": "middle_intermediate",
+      "source": "hand-color",
+      "sourceTriangles": 24410,
+      "sourceTriangleIdHash": "aff274ac1bf167b14929b402ea642738e59778f972a48b2a2a73b078440f983c",
+      "sourceVertexHash": "83dc9792f7be488c60ba05c56c37a030d137a8945cd3f1031552f9ee5dcaacfa"
+    },
+    {
+      "name": "middle_distal",
+      "source": "hand-color",
+      "sourceTriangles": 13579,
+      "sourceTriangleIdHash": "a57bf19deadb54ab9c397012b6df156e7cbf0246a205d908aa747e8aa6726cee",
+      "sourceVertexHash": "378e63cf9e34b40c2daa27331b8d6e937eed26e305e27440b244da03c74e86d0"
+    },
+    {
+      "name": "thumb_proximal",
+      "source": "hand-color",
+      "sourceTriangles": 12292,
+      "sourceTriangleIdHash": "fb2da0b7b8fd132b94fd08cfb0ade2d9a10513bc0f7ba9469e497c428241241c",
+      "sourceVertexHash": "82f96691efec36ca041281da3d5b934dfad994b57bde569bada5d8a80cad79c3"
+    },
+    {
+      "name": "thumb_intermediate",
+      "source": "hand-color",
+      "sourceTriangles": 13618,
+      "sourceTriangleIdHash": "b659ee7c4ec411f15eac1f78ea8c9f5281cad1d59db7d15926f4a5f215d259fc",
+      "sourceVertexHash": "46a38d8b8c3212466b6c66216fbc52654e9654a12f74499ee1bad69467b649f8"
+    },
+    {
+      "name": "index_03",
+      "source": "legacy-index",
+      "sourceNode": "index_03",
+      "sourceTriangles": 36870,
+      "sourceBufferViewHashes": {
+        "POSITION": "1f2e171e66360d01a72f30e7dfe78f102c387dda70640e1a5abf5454850d013b",
+        "NORMAL": "2de260664050fa262c619ee91fe1e8fdbb40acb171328d2cf007ef21d3556f44",
+        "TEXCOORD_0": "2df72ff7d30e776d65ef1ac2d6a0df16a3b4abf4443759c2d4d6d152c9935333",
+        "INDICES": "909be1e0f27cd4945c23355288c689096997e81d318ced4ce89fcce54adfbb01"
+      }
+    },
+    {
+      "name": "index_02",
+      "source": "legacy-index",
+      "sourceNode": "index_02",
+      "sourceTriangles": 33885,
+      "sourceBufferViewHashes": {
+        "POSITION": "8685b8874479585506953c0446b9c6bc315a076e8270e88946786f27a0239763",
+        "NORMAL": "50c8a20cbd84c3a014d5a0f68f4b0e962ca2fd3417d43b27664a0010823d40ca",
+        "TEXCOORD_0": "25891028eae7a12b143c0901dfa51541d27f9a3e148daa787d0a143f76021f0d",
+        "INDICES": "e27b622a5c621354fd113c9b947a838fa548d089f6bc14ed674a4812db3e7bf4"
+      }
+    },
+    {
+      "name": "index_01",
+      "source": "legacy-index",
+      "sourceNode": "index_01",
+      "sourceTriangles": 6106,
+      "sourceBufferViewHashes": {
+        "POSITION": "48af57ad96059e30ca64199602c1eb97049af9b285c6f7fd9c139cb39c92dbe1",
+        "NORMAL": "1716e80e82a93a06c6165bdcd77f8a48f670359b1a38f23e5b663ec296fc8688",
+        "TEXCOORD_0": "47e06cbd49eda41b7f8aa2ad3a61ac255ee964c6cacf39075f10c90256ffa452",
+        "INDICES": "75fb34f72be16047b22e2553505605d280a24f2e8017051414c57c9f9dce2a88"
+      }
+    }
+  ],
+  "cutChecks": [
+    {
+      "segment": "pinky_proximal",
+      "atStart": true,
+      "capArea": 0.0012651937722694129,
+      "largestCapArea": 0.00047577836085110903,
+      "remainingPlanarBoundaryEdges": 471
+    },
+    {
+      "segment": "pinky_proximal",
+      "atStart": false,
+      "capArea": 0.010475193041202147,
+      "largestCapArea": 0.009944368153810501,
+      "remainingPlanarBoundaryEdges": 8
+    },
+    {
+      "segment": "pinky_intermediate",
+      "atStart": true,
+      "capArea": 0.010124557734513928,
+      "largestCapArea": 0.009864086285233498,
+      "remainingPlanarBoundaryEdges": 13
+    },
+    {
+      "segment": "pinky_intermediate",
+      "atStart": false,
+      "capArea": 0.006276512984186411,
+      "largestCapArea": 0.006276512984186411,
+      "remainingPlanarBoundaryEdges": 0
+    },
+    {
+      "segment": "pinky_distal",
+      "atStart": true,
+      "capArea": 0.006206338293850422,
+      "largestCapArea": 0.006206338293850422,
+      "remainingPlanarBoundaryEdges": 0
+    },
+    {
+      "segment": "ring_proximal",
+      "atStart": true,
+      "capArea": 0.0015127581427805126,
+      "largestCapArea": 0.0006762137054465711,
+      "remainingPlanarBoundaryEdges": 582
+    },
+    {
+      "segment": "ring_proximal",
+      "atStart": false,
+      "capArea": 0.00043043783443863504,
+      "largestCapArea": 0.00019980515935458243,
+      "remainingPlanarBoundaryEdges": 602
+    },
+    {
+      "segment": "ring_intermediate",
+      "atStart": true,
+      "capArea": 0,
+      "largestCapArea": 0,
+      "remainingPlanarBoundaryEdges": 596
+    },
+    {
+      "segment": "ring_intermediate",
+      "atStart": false,
+      "capArea": 0.008344555273652077,
+      "largestCapArea": 0.008344555273652077,
+      "remainingPlanarBoundaryEdges": 0
+    },
+    {
+      "segment": "ring_distal",
+      "atStart": true,
+      "capArea": 0.008555889933631988,
+      "largestCapArea": 0.008495906367897987,
+      "remainingPlanarBoundaryEdges": 0
+    },
+    {
+      "segment": "middle_proximal",
+      "atStart": true,
+      "capArea": 0.01464331871829927,
+      "largestCapArea": 0.014074848033487797,
+      "remainingPlanarBoundaryEdges": 16
+    },
+    {
+      "segment": "middle_proximal",
+      "atStart": false,
+      "capArea": 0.013153020823665429,
+      "largestCapArea": 0.011248508468270302,
+      "remainingPlanarBoundaryEdges": 0
+    },
+    {
+      "segment": "middle_intermediate",
+      "atStart": true,
+      "capArea": 0.011058886535465717,
+      "largestCapArea": 0.011058886535465717,
+      "remainingPlanarBoundaryEdges": 0
+    },
+    {
+      "segment": "middle_intermediate",
+      "atStart": false,
+      "capArea": 0.009483071975409985,
+      "largestCapArea": 0.009483071975409985,
+      "remainingPlanarBoundaryEdges": 0
+    },
+    {
+      "segment": "middle_distal",
+      "atStart": true,
+      "capArea": 0.009186682233121246,
+      "largestCapArea": 0.00903749093413353,
+      "remainingPlanarBoundaryEdges": 0
+    },
+    {
+      "segment": "thumb_proximal",
+      "atStart": true,
+      "capArea": 0,
+      "largestCapArea": 0,
+      "remainingPlanarBoundaryEdges": 390
+    },
+    {
+      "segment": "thumb_proximal",
+      "atStart": false,
+      "capArea": 0.006271833055411236,
+      "largestCapArea": 0.005691767204552889,
+      "remainingPlanarBoundaryEdges": 0
+    },
+    {
+      "segment": "thumb_intermediate",
+      "atStart": true,
+      "capArea": 0.00711850868538022,
+      "largestCapArea": 0.00711850868538022,
+      "remainingPlanarBoundaryEdges": 0
+    }
+  ],
+  "legacyIndex": {
+    "sourceSha256": "ddda0a9da978214ab5372d0b81e23bb939cf5dc594fdb56f8cb182fcb6b9b8d5",
+    "sourcePath": "virtual-hand-rigged-final/public/models/robot_hand_rig.glb",
+    "sourceNodes": [
+      "index_03",
+      "index_02",
+      "index_01"
+    ],
+    "outputNodes": [
+      "index_03",
+      "index_02",
+      "index_01"
+    ],
+    "alignmentNode": "legacy_index_alignment",
+    "uniformScale": 0.97
+  },
+  "notes": [
+    "Palm, thumb, middle, ring and pinky retain the original hand-color geometry and UV maps.",
+    "Index is the unchanged legacy index subtree: three meshes, materials and local pivot transforms copied exactly from the donor GLB.",
+    "Only one common uniform scale and translation align the donor index to the current palm.",
+    "Thumb cup stays with the palm; the moving chain starts at the oblique neck.",
+    "Hand-color ownership audited before crossing-face halo, local seam trimming and mesh reduction.",
+    "Small bearing cores and beveled collars on the four source fingers are exhibition geometry, not manufacturing CAD."
+  ]
+}

@@ -2,6 +2,14 @@
 
 ACCxGMAP 전시 mock-up 단계의 로봇손/지화 알고리즘 프로젝트다. 이 저장소는 카메라 기반 자모 인식 실험, 발표용 가상 로봇손 웹앱, 그리고 앞으로 추가될 실제 전시용 모터 제어 코드를 한 프로젝트 안에서 관리한다.
 
+## 최신 작업 — 제주 전시 (2026-11-07)
+
+현재 함께 개발하는 전시 앱은 **[`jeju-exhibition/`](jeju-exhibition/README.md)** 이다. 손가락 조종 → 400ms 자동 기록 → 6개 슬롯으로 단어 생성 → 실시간 워드클라우드 → Ollama 문장 생성까지 연결되어 있다. 실행 후 [모아보기](http://localhost:3002/exhibition)에서 모든 관객 화면을 확인하고 조종할 수 있다.
+
+손 모델은 원본을 보존한 관절 리그에 기존 ACC 검지를 결합했고, 전시 화면 디자인과 입력 자모 반영 수·AI 보완 수 표시를 정리했다. 실행에 필요한 GLB는 저장소에 포함되어 있어 Blender는 모델을 재생성할 때만 필요하다.
+
+협업자는 [제주 앱 실행법](jeju-exhibition/README.md#실행)과 [최신 인수인계](HANDOFF.md)를 먼저 읽는다. 아래의 ACC 설명은 별도 앱 `virtual-hand-rigged-final/`(3001)의 기존 경로이며, 제주 앱(3002)과 구분한다. 저장소 공유는 앱의 인터넷 배포를 뜻하지 않는다.
+
 ## 전체 맥락
 
 초기 방향은 카메라가 로봇손을 촬영하고 MediaPipe Hands가 21개 skeletal landmark를 추출해 지화 자모를 인식하는 방식이었다. 현재 발표용 주 경로는 웹앱의 가상 로봇손 상태를 직접 읽는 방식으로 바뀌었다.
@@ -25,6 +33,8 @@ GeSTure/
 │   └── 프로젝트 전체 지도, 폴더 역할, 구현/미구현 상태
 ├── HANDOFF.md
 │   └── 최신 진행상황, 검증 결과, 다음 작업 인수인계
+├── jeju-exhibition/
+│   └── 제주 전시 앱: 손·단어·조종기·모아보기·실시간 워드클라우드
 ├── jamo-recognition/
 │   ├── README.md
 │   ├── pyproject.toml
@@ -64,6 +74,7 @@ GeSTure/
 | 영역 | 현재 폴더 | 역할 |
 | --- | --- | --- |
 | 자모음 알고리즘 | `jamo-recognition/` | Python 기반 카메라/MediaPipe/skeleton 추출, reference sample, 자모 인식, 한글 compose, Python Ollama 보정 실험 |
+| 제주 전시 앱 | `jeju-exhibition/` | 400ms 포즈 기록, 단어 보정, 전시용 손 리그, 모아보기, 실시간 워드클라우드와 문장 생성 |
 | 발표용 웹앱 | `virtual-hand-rigged-final/` | 가상 로봇손, 관객 controller, 5비트 자모 인식, 자동 자모 누적, Ollama 단어 보정, display/recognition 화면 |
 | 실제 모터 제어 | `motor-control/` | 실제 전시용 로봇손 모터/servo/actuator 제어 코드가 들어갈 예정 영역 |
 | 문서/인수인계 | `README.md`, `HANDOFF.md`, 각 영역별 `README.md` | 전체 맥락, 진행 기록, 영역별 세부 운영법 |

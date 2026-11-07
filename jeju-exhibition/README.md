@@ -57,20 +57,28 @@ ACC 전시에서도 단어는 프로젝터나 별도 화면으로 손과 분리�
 
 ## 실행
 
+Node.js 22.18 이상과 npm, Ollama가 필요하다. Ollama를 실행하고 `ollama list`로 확인한 뒤 모델이 없을 때만 `ollama pull qwen2.5:7b-instruct`를 실행한다. 기본 연결 주소는 `http://127.0.0.1:11434`다. 앱용 손 모델 GLB와 리그 JSON은 저장소에 포함되어 있어 일반 실행에는 Blender가 필요 없다.
+
 ```sh
 cd jeju-exhibition
-npm install
+npm ci
 npm run setup
 # .env의 PUBLIC_ORIGIN / WIFI_SSID / WIFI_PASSWORD를 현장 정보로 설정
 npm run build
 npm start
 ```
 
+기본 주소 `/`와 **[모아보기](http://localhost:3002/exhibition)** 에서 손·최근 단어·별도 워드클라우드·손가락 조종기 5개를 한 페이지에 띄운다. 각 화면의 `크게 열기`는 개별 전시 주소를 연다. 모아보기의 입력 반영·보완 수와 클라우드 상태는 실제 서버 기록을 사용한다.
+모아보기의 다섯 조종기도 실제 참가자 세션으로 손가락 자리를 배정받는다. 관객 QR로 테스트하기 전 각 미리보기의 `조종 자리 비우기`를 누르면 즉시 반환한다. 모아보기 탭을 닫는 경우에는 기존 15초 재접속 유예 뒤 반환된다. 다른 관객이 이미 사용 중이면 해당 손가락의 차례를 기다리며, 모아보기가 조종 권한을 우회하지 않는다.
+
 부팅 로그에 각 화면 주소가 LAN IP로 찍힌다. `/join/qr`은 관객 안내용 QR 화면이다.
 
 ```
+모아보기         http://<IP>:3002/exhibition
 손 화면 (세로)  http://<IP>:3002/display/hand
-단어 화면       http://<IP>:3002/display/word
+단어 구름       http://<IP>:3002/display/word
+최근 단어       http://<IP>:3002/display/latest-word
+별도 워드클라우드 http://<IP>:3002/word-cloud/
 관객 참여        http://<IP>:3002/join
 QR 안내 화면     http://<IP>:3002/join/qr
 운영 모니터     http://<IP>:3002/monitor
@@ -82,6 +90,7 @@ QR 안내 화면     http://<IP>:3002/join/qr
 ```sh
 npm run dev        # 서버 3002 + vite 5174
 npm run typecheck  # 클라이언트 + 서버
+npm test           # 서버 회귀 검사
 npx tsx server/smoke.ts   # 인식기/단어 생성 파이프라인 점검
 ```
 
@@ -141,11 +150,14 @@ npm run demo:word
 새 손가락이 사용 중이면 다른 빈 손가락으로 바꾸지 않고 해당 손가락을 기다린다.
 기존 `/join` 주소는 빈 손가락 자동 배정을 유지하지만 안내판은 손가락별 주소를 사용한다.
 
+결과 단어의 **입력 자모 반영 수 / 보완 수**는 서버가 기본 자모로 분해해 계산한다. 입력 슬롯 하나당 자모 하나만 대응시켜 설명할 수 있는 최대 개수를 세고, 나머지는 보완 수로 표시한다. 같은 자모가 반복되면 각각 별개다. Ollama 출력과 단어장 대체 출력을 구분해 보완 출처도 표시한다.
+
 ## 단어 구름 디스플레이
 
 `/display/word`는 제공된 `WordCloud.html`의 배경·질감·궤도·색·타이포와 문장 전환을
 옮긴 관객용 화면이다. 실제 인식 파이프라인에서 완성한 단어만 실시간으로 추가한다.
-중앙의 WORD CLOUD 주위로 단어가 움직이고, 약 10초마다 일부 단어가 문장 위치로 모였다가 흩어진다.
+중앙 제목 주위로 단어가 움직이고, 약 10초마다 일부 단어가 문장 위치로 모였다가 흩어진다.
+추가된 `/word-cloud/`도 같은 서버의 단어·문장을 별도 전시 디자인으로 표시한다. `/display/latest-word`는 생성된 최근 단어와 여섯 손 모양 진행을 따로 보여준다. 문장 생성·저장은 서버 하나에서 처리하므로 화면을 여러 개 열어도 별도 문장 엔진이 생기지 않는다.
 자모 후보·슬롯 진행·생성 경로 같은 운영 정보는 `/monitor`에서 확인한다.
 
 서로 다른 단어가 2개 이상 쌓이면 서버가 문장에 사용할 두 단어를 먼저 정한다. 새 단어가 들어왔을 때는
@@ -248,7 +260,9 @@ server/
 
 client/src/
   pages/HandDisplay.tsx  손만 보이는 세로 디스플레이
-  pages/WordDisplay.tsx  단어 궤도 / 문장으로 모임 / 해산
+  pages/WordCloudDisplay.tsx  기존 단어 궤도 / 문장으로 모임 / 해산
+  pages/WordDisplay.tsx  최근 단어 전용 화면
+  pages/Exhibition.tsx   손·단어·클라우드·조종기 모아보기
   pages/Controller.tsx   관객 개인 휴대폰 조종·대기·종료
   pages/JoinQr.tsx       Wi-Fi와 손가락별 QR 5개 안내·인쇄
   pages/ConnectionCheck.tsx  휴대폰 HTTP·소켓 연결 점검
@@ -256,6 +270,7 @@ client/src/
   components/VirtualHand.tsx  GLB 로봇손. 굽힘은 관객 값 그대로, 벌림은 굽힘에 연동
   display/wordCloudScene.ts   문장 전환 애니메이션 (30fps, 숨긴 탭은 중지)
 
+public/word-cloud/            별도 워드클라우드 전시 HTML·CSS
 shared/wordCloud.ts            단어 구름·문장 데이터 형식
 server/wordCloud.ts            기록 저장 / 문장 구성 / 늦은 결과 취소
 server/sentenceComposition.ts  자유 문장 작성 / 형식·행동 검사 / 별도 의미 검토
@@ -269,10 +284,9 @@ docs/pose-derivation.md   포즈가 어떻게 도출됐는지
 
 전시 장비에서는 맞는 설정이 개발용 노트북에서는 부담이 된다. 두 가지다.
 
-### 1. 손 화면은 열어두는 것만으로 계속 GPU를 쓴다
+### 1. 손 화면은 움직일 때 GPU를 쓴다
 
-`/display/hand`는 WebGL로 로봇손을 쉬지 않고 그린다. 그림자 맵이 2048px이고
-프레임 제한이 없어서, 탭이 배경에 있어도 계속 돌아간다. 실측한 값이다.
+전시 렌더러는 `frameloop="demand"`를 사용한다. 입력이 바뀌면 관절을 부드럽게 움직이고 목표 자세에 도달하면 연속 렌더링을 멈춘다. 그림자 맵은 1024px, 화면 픽셀 비율은 최대 1.5다. 아래는 변경 전 연속 렌더러에서 측정한 값이다.
 
 ```
 Chrome Helper            26.9%
@@ -327,9 +341,13 @@ curl -s http://127.0.0.1:11434/api/ps    # 비어 있으면 내려간 것
 
 ## GLB 파일
 
-`public/models/robot_hand_rig.glb`는 ACC 폴더의 68MB 파일을 가리키는 심볼릭 링크다.
-복제하면 저장소가 68MB 더 커진다. 나중에 두 프로젝트를 완전히 분리한다면
-그때 실제 파일로 바꾸고, 이왕이면 Git LFS로 옮기는 것이 좋다.
+제주 손 화면은 `public/models/hand_exhibition.glb`와 `hand_exhibition.rig.json`을 사용한다. Meshy 원본의 손바닥·엄지·중지·약지·소지에 기존 ACC 모델의 검지를 원형 그대로 결합한 리그다. 원본은 수정하지 않으며, 조종값 100=펴짐·0=접힘을 각 관절의 로컬 회전축과 최대 굽힘각에 적용한다. 인식은 메시 대신 기존 다섯 굽힘값을 사용한다.
+
+재생성은 `scripts/build_exhibition_hand.py`, 구조 검증은 `scripts/validate_hand_glb.py`로 수행한다. 일반 실행에는 Blender가 필요 없고 재생성할 때만 Blender와 별도 Meshy 원본이 필요하다. 편집용 Blender 파일과 검수 이미지는 Git에서 제외한 `../data/model-work/`에 있다. 출처·검지 보존 범위·재생성 절차는 [손 모델 문서](docs/hand-model.md)를 본다.
+
+## 전시 화면 디자인
+
+손은 먹색 공간과 따뜻한 측면 조명으로, 단어는 아이보리 명조체와 넓은 여백으로 보여준다. 조종기와 모아보기도 같은 색상과 서체를 사용한다. 관객 휴대폰의 손가락 이름과 세로 조종기, 대기·복구 안내는 유지한다. 글꼴은 기기에 설치된 명조체·고딕체를 사용하므로 실제 전시장 장비에서 외형과 가독성을 다시 확인한다.
 
 ## 실측으로 확인한 것
 
@@ -373,7 +391,7 @@ WebGL로 로봇손을 계속 그리는 화면이 같은 GPU를 쓰기 때문이�
    세로 기준으로 짰고 가로에서도 깨지진 않지만 실기에서 봐야 한다.
 3. **단어장 확장.** 지금 150개 남짓이다. 전시 시간이 길면 반복이 눈에 띌 수 있다.
 4. **전시 로그.** 만들어진 단어와 그때의 슬롯을 파일로 남기는 기능이 아직 없다.
-5. **디자인.** 단어 화면은 지금 무엇을 보여줄지만 정해둔 상태다. 레이아웃과 타이포는 미정.
+5. **전시장 디자인 검수.** 손·단어·조종기·워드클라우드 디자인은 적용했다. 실제 투사 크기와 조명에서 가독성, 대비, 관절 연결부를 확인해야 한다.
 
 ## 손가락 좌우 벌림은 실측이다
 

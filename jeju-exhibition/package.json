@@ -11,6 +11,8 @@
     "start": "tsx server/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
     "test": "tsx --test server/*.test.ts",
+    "test:word-correction": "node --import tsx --test server/wordCorrection.test.ts",
+    "test:word-cloud": "node --import tsx --test server/sentenceComposition.test.ts server/wordCloud.test.ts",
     "setup": "node scripts/setup-exhibition.mjs",
     "check:network": "tsx scripts/check-network.ts",
     "demo:word": "tsx scripts/demo-word.ts"

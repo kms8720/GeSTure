@@ -13,6 +13,10 @@ export type WordCorrection = {
   slotSummary: string;
   /** LLM 또는 대체 경로가 실제로 고른 자모열 */
   chosenJamo: string[];
+  /** 각 입력 슬롯을 최대 한 번씩 사용해 결과 단어와 대응시킨 기본 자모 수 */
+  inputJamoCount: number;
+  /** 결과 단어의 기본 자모 중 입력 슬롯으로 설명되지 않는 수 */
+  supplementedJamoCount: number;
   composedText: string;
   correctedWord: string;
   candidates: string[];
@@ -408,10 +412,21 @@ export async function correctWord(slots: JamoSlot[], options: { signal?: AbortSi
   {
     // LLM과 단어장 어느 경로도 마지막 출력 관문을 우회할 수 없다.
     const allowed = isAllowedOutput(partial.correctedWord);
+    const correctedWord = allowed ? partial.correctedWord : '';
+    // 반복 자모도 각각 세고, 한 손 모양을 여러 자모에 중복 사용하지 않는다.
+    const wordJamo = decomposeWord(correctedWord);
+    const inputJamoCount = matchCount(wordJamo, slots);
+    const supplementedJamoCount = wordJamo.length - inputJamoCount;
+    const supplementSource = partial.source === 'llm' ? 'AI' : '단어장';
     return {
       slots, slotSummary, model: OLLAMA_MODEL, elapsedMs: Date.now() - startedAt,
       ...partial,
-      correctedWord: allowed ? partial.correctedWord : '',
+      correctedWord,
+      inputJamoCount,
+      supplementedJamoCount,
+      note: correctedWord
+        ? `${partial.note} (입력 자모 ${inputJamoCount}개 반영 · ${supplementSource} 보완 ${supplementedJamoCount}개)`
+        : partial.note,
       chosenJamo: allowed ? partial.chosenJamo : [],
       composedText: allowed ? composeJamo(partial.chosenJamo) : '',
       candidates: partial.candidates.filter(isAllowedOutput),
@@ -451,8 +466,6 @@ export async function correctWord(slots: JamoSlot[], options: { signal?: AbortSi
       }
     }
 
-    const usedSlots = new Set(payload.chosenJamo).size;
-
     return finish({
       chosenJamo: payload.chosenJamo,
       correctedWord: payload.correctedWord,
@@ -462,7 +475,7 @@ export async function correctWord(slots: JamoSlot[], options: { signal?: AbortSi
         .slice(0, 4)],
       // note는 LLM에게 시키지 않는다. 출력 토큰 하나가 비싸고 화면에 나가지도 않는다
       note: onShortlist
-        ? `단어장 후보에서 골랐다 (자모 ${usedSlots}개 사용)`
+        ? '단어장 후보에서 골랐다'
         : '목록 밖 단어를 제안했고 실재 단어 검사를 통과했다',
       source: 'llm',
       status: 'ok'

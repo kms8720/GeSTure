@@ -55,6 +55,8 @@ export type WordCorrection = {
   slots: JamoSlot[];
   slotSummary: string;
   chosenJamo: string[];
+  inputJamoCount: number;
+  supplementedJamoCount: number;
   composedText: string;
   correctedWord: string;
   candidates: string[];

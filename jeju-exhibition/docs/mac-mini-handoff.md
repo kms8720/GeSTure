@@ -1,12 +1,12 @@
 # 제주 전시 — Mac mini AI 세션 인수인계
 
-작성: 2026-10-29. 기능 기준 커밋: `58dc1fb`.
+작성: 2026-10-29. 업데이트: 2026-11-07. QR·문장 기능 기준 커밋은 `58dc1fb`이며 PR #23은 `b316c54`로 `main`에 병합되었다. 손 모델·전시 화면 통합 내용과 새 검증 기록은 루트 [HANDOFF](../../HANDOFF.md)를 함께 본다.
 
 ## 작업 범위와 시작점
 
 - 사용자가 실행·테스트 장소를 **Mac mini**로 옮겼다. 이전 개발 Mac에서는 서버·시연·모델 테스트를 다시 켜지 않는다. 기존 전시 서버의 종료와 TCP 3002 리스너 없음은 확인했다.
 - 저장소: https://github.com/kms8720/GeSTure
-- 브랜치: `feat/mobile-qr-controllers`. PR: https://github.com/kms8720/GeSTure/pull/23 (열림, 미병합).
+- 브랜치: `main`. PR [#23](https://github.com/kms8720/GeSTure/pull/23)의 QR·문장 개선을 포함한다.
 - 작업 디렉터리: 저장소 안의 `jeju-exhibition/`. Mac mini의 실제 체크아웃 경로를 확인한다. 이전 Mac의 절대 경로를 사용하지 않는다.
 - 목표: 제주 전시의 휴대폰 조종 → 자모 후보 누적 → 단어 생성 → 단어 궤도 → 문장 모이기를 실제 장비에서 검증하고 보완한다.
 - ACC의 `virtual-hand-rigged-final/`과 홀로그램 후속 기획은 이번 구현 범위 밖이다.
@@ -19,8 +19,8 @@
 ```sh
 # GeSTure 저장소 루트에서, 기존 변경을 확인한 뒤
 git fetch origin
-git switch feat/mobile-qr-controllers
-git pull --ff-only origin feat/mobile-qr-controllers
+git switch main
+git pull --ff-only origin main
 git log -3 --oneline
 ```
 
@@ -69,12 +69,17 @@ npm run check:network -- http://<MAC_MINI_IP>:3002
 
 | 화면 | 경로 | 용도 |
 | --- | --- | --- |
+| 모아보기 | `/exhibition` | 손·최근 단어·클라우드·조종기를 한 화면에서 확인 |
 | 손 | `/display/hand` | 세로 디스플레이, 기본은 손만 표시 |
-| 단어 | `/display/word` | 별도 큰 화면, 궤도와 문장 연출 |
+| 단어 구름 | `/display/word` | 별도 큰 화면, 궤도와 문장 연출 |
+| 최근 단어 | `/display/latest-word` | 새 단어와 여섯 손 모양 진행 |
+| 별도 클라우드 | `/word-cloud/` | 같은 서버 기록의 추가 전시 디자인 |
 | 관객 QR | `/join/qr` | 손가락별 QR 5개 |
 | 운영 | `/monitor` | 운영자 키로 인증, 자모·입력·결과·문장 관리 |
 | 디버그 | `/display/hand?debug=1` | D 키로 표시/숨김 |
 | 연결 확인 | `/check` | 휴대폰에서 열어 확인 |
+
+모아보기의 조종기 다섯 개는 실제 손가락 자리를 사용한다. 휴대폰 QR 실기 전 각 미리보기의 `조종 자리 비우기`로 반환하거나, 모아보기 탭을 닫고 15초 재접속 유예가 끝난 뒤 참여한다.
 
 ## GitHub로 함께 이동하지 않는 것
 
@@ -82,7 +87,7 @@ npm run check:network -- http://<MAC_MINI_IP>:3002
 - `node_modules`, 빌드 결과, Ollama 실행 환경과 모델 가중치: Mac mini에서 준비한다.
 - `data/word-cloud.json`과 백업: Git 제외다. 새 설치는 단어가 없는 것이 정상이다. 기존 화면의 단어가 저절로 복원될 것으로 기대하지 않는다.
 - 기존 기록을 이어야 하면 양쪽 서버를 멈춘 상태에서 별도 파일 전송한다. Mac mini에 기록이 있으면 먼저 백업하고 덮어쓰지 않는다. 전송 후 파일 권한·`WORD_CLOUD_FILE` 경로를 확인한다. 이번 이관에서는 기록 파일을 GitHub에 올리거나 Mac mini로 전송하지 않았다.
-- 녹음·자동 전사·검증 스크린샷은 이전 Mac 로컬에만 있다. 코드 실행의 필수 파일이 아니며 이번 인수인계의 결정 사항은 문서에 정리돼 있다.
+- 녹음·자동 전사·검증 스크린샷은 각각 검증한 개발 장비의 로컬에만 있다. 코드 실행의 필수 파일이 아니며 이번 인수인계의 결정 사항은 문서에 정리돼 있다.
 - 손가락 위치는 관객 연결 종료·자리 이동 때 유지하지만, 서버 프로세스 재시작 후 영속 복원하는 기능은 없다.
 
 ## 유지해야 할 최신 동작
@@ -130,7 +135,8 @@ npm run check:network -- http://<MAC_MINI_IP>:3002
 | 무작위 조합·자동 생성·저장·마이그레이션 | `server/wordCloud.ts` 및 테스트 |
 | 인식·API·소켓 연결 | `server/index.ts`, `server/participantSessions.ts` |
 | 단어 생성 | `server/wordCorrection.ts` |
-| 단어 화면·모이기 연출 | `client/src/pages/WordDisplay.tsx`, `client/src/display/wordCloudScene.ts` |
+| 단어 구름·모이기 연출 | `client/src/pages/WordCloudDisplay.tsx`, `client/src/display/wordCloudScene.ts` |
+| 최근 단어·모아보기·별도 클라우드 | `client/src/pages/WordDisplay.tsx`, `client/src/pages/Exhibition.tsx`, `public/word-cloud/` |
 | 손·운영 화면 | `client/src/pages/HandDisplay.tsx`, `client/src/pages/Monitor.tsx` |
 
-테스트 후 Mac mini 사양·OS·Node/Ollama 버전, 연결 디스플레이, 휴대폰·브라우저, 실제 수행 항목, 생성 시간과 실패 양상, 남은 문제를 날짜와 함께 루트 `HANDOFF.md`에 기록한다. 비밀번호·운영자 키·녹음 원문은 기록하지 않는다. 수정은 같은 브랜치에 커밋·푸시하고 PR #23의 검증 상태를 갱신한다.
+테스트 후 Mac mini 사양·OS·Node/Ollama 버전, 연결 디스플레이, 휴대폰·브라우저, 실제 수행 항목, 생성 시간과 실패 양상, 남은 문제를 날짜와 함께 루트 `HANDOFF.md`에 기록한다. 비밀번호·운영자 키·녹음 원문은 기록하지 않는다. 새 수정은 `main` 최신 상태에서 작업 브랜치를 만들어 커밋하고, 해당 변경의 PR에 검증 상태를 기록한다. 이미 병합된 PR #23에 새 변경을 추가하지 않는다.
