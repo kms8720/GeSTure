@@ -25,7 +25,7 @@ type MonitorProps = {
 /**
  * 운영자용 화면. 전시 관객에게는 보이지 않는다.
  *
- * ACC 버전에서 미구현으로 남아 있던 reset과 강제 확정 버튼을 여기 넣었다.
+ * 입력 초기화와 강제 확정 기능을 제공한다.
  * 관객이 손 모양을 다 채우지 않고 떠났을 때 운영자가 끊어줄 수단이 필요하다.
  */
 export default function Monitor({ handState, controllerState, participationSummary, recognitionState, poseClasses, serverOnline, wordCloud }: MonitorProps)

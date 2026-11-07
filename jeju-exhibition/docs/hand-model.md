@@ -1,6 +1,6 @@
 # 전시용 손 모델
 
-`public/models/hand_exhibition.glb`는 제공된 `hand color.glb`의 손바닥·엄지·중지·약지·소지에, 기존 `virtual-hand-rigged-final/public/models/robot_hand_rig.glb`의 검지를 결합한 전시 화면용 모델이다. 두 원본 파일과 ACC 앱은 변경하지 않는다.
+`public/models/hand_exhibition.glb`는 제공된 `hand color.glb`의 손바닥·엄지·중지·약지·소지에, `model-sources/reference_hand.glb`의 검지를 결합한 전시 화면용 모델이다. 두 입력 모델은 읽기 전용 원본으로 보존한다.
 
 ## 구성과 수정
 
@@ -14,7 +14,7 @@
 
 ## 재생성
 
-프로젝트 루트에서 Blender 5.2를 사용한다. 첫 인수는 Meshy 원본, 두 번째는 출력 경로다. 기존 검지는 저장소의 ACC 모델에서 읽으며 두 입력 파일을 출력 경로로 지정할 수 없다.
+프로젝트 루트에서 Blender 5.2를 사용한다. 첫 인수는 Meshy 원본, 두 번째는 출력 경로다. 검지는 `jeju-exhibition/model-sources/reference_hand.glb`에서 읽으며 두 입력 파일을 출력 경로로 지정할 수 없다.
 
 ```powershell
 & 'C:/Program Files/Blender Foundation/Blender 5.2/blender.exe' -b --python jeju-exhibition/scripts/build_exhibition_hand.py -- '원본/hand color.glb' 'jeju-exhibition/public/models/hand_exhibition.glb'

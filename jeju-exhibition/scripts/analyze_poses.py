@@ -16,9 +16,10 @@ MediaPipe 21 landmark 인덱스:
 import json
 import collections
 import itertools
+from pathlib import Path
 import numpy as np
 
-PATH = "jamo-recognition/data/reference_samples.jsonl"
+PATH = Path(__file__).resolve().parents[1] / "reference/reference_samples.jsonl"
 
 FINGER_CHAINS = {
     "thumb":  [1, 2, 3, 4],

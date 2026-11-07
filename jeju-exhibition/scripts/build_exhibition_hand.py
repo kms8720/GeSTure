@@ -11,7 +11,7 @@ if not args:
 SOURCE=os.path.abspath(args[0])
 OUT=args[1] if len(args)>1 else os.path.abspath('jeju-exhibition/public/models/hand_exhibition.glb')
 OUT=os.path.abspath(OUT)
-DONOR=os.path.abspath(args[2] if len(args)>2 else os.path.join(os.path.dirname(__file__),'../../virtual-hand-rigged-final/public/models/robot_hand_rig.glb'))
+DONOR=os.path.abspath(args[2] if len(args)>2 else os.path.join(os.path.dirname(__file__),'../model-sources/reference_hand.glb'))
 DONOR_RECORD=os.path.relpath(DONOR,os.path.abspath(os.path.join(os.path.dirname(__file__),'../..'))).replace('\\','/')
 assert os.path.normcase(os.path.abspath(SOURCE)) != os.path.normcase(OUT), 'Output must not overwrite the source GLB'
 assert os.path.normcase(DONOR) != os.path.normcase(OUT), 'Output must not overwrite the donor GLB'
