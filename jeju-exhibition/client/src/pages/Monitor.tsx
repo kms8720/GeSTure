@@ -112,6 +112,8 @@ export default function Monitor({ handState, controllerState, recognitionState, 
             <dl>
               <dt>단어</dt><dd className="big">{correction.correctedWord}</dd>
               <dt>고른 자모</dt><dd>{correction.chosenJamo.join('')}</dd>
+              <dt>입력 자모 반영</dt><dd>{correction.inputJamoCount}개</dd>
+              <dt>{correction.source === 'llm' ? 'AI 보완' : '단어장 보완'}</dt><dd>{correction.supplementedJamoCount}개</dd>
               <dt>조합</dt><dd>{correction.composedText}</dd>
               <dt>후보</dt><dd>{correction.candidates.join(', ')}</dd>
               <dt>경로</dt><dd>{correction.source} / {correction.status}</dd>

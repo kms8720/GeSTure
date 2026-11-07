@@ -21,6 +21,7 @@ import {
   recognizePose
 } from './poseRecognizer.js';
 import { JamoSlot, WordCorrection, correctWord, matchVocabulary, warmUpOllama } from './wordCorrection.js';
+import { WordCloud } from './wordCloud.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -104,6 +105,7 @@ function getLanAddresses(): string[]
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: '*', methods: ['GET', 'POST'] } });
+const wordCloud = new WordCloud((state) => io.emit('word-cloud:state', state));
 
 app.use(express.json());
 
@@ -151,6 +153,11 @@ app.post('/hand-state', (request, response) =>
 app.get('/recognition-state', (_request, response) =>
 {
   response.json({ ok: true, recognitionState });
+});
+
+app.get('/word-cloud-state', (_request, response) =>
+{
+  response.json({ ok: true, wordCloudState: wordCloud.state });
 });
 
 app.post('/recognition/reset', (_request, response) =>
@@ -218,6 +225,7 @@ io.on('connection', (socket) =>
   socket.emit('hand:state', handState);
   socket.emit('controller:state', getControllerState());
   socket.emit('recognition:state', recognitionState);
+  socket.emit('word-cloud:state', wordCloud.state);
   socket.emit('pose:classes', POSE_CLASSES);
 
   socket.on('controller:join', (payload: { finger?: unknown }) =>
@@ -364,6 +372,7 @@ async function runCorrection(slots: JamoSlot[]): Promise<void>
         if (correction.correctedWord)
         {
           recognitionState.words.push(correction.correctedWord);
+          wordCloud.addWord(correction.correctedWord);
           if (recognitionState.words.length > MAX_WORD_HISTORY)
           {
             recognitionState.words.shift();

@@ -5,85 +5,56 @@ type WordDisplayProps = {
   serverOnline: boolean;
 };
 
-/**
- * 단어가 뜨는 화면. 손 화면과 분리된 별도 디스플레이 한 대다.
- *
- * 손 화면에서 걷어낸 것들이 여기로 모인다.
- *   - 지금 손 모양이 될 수 있는 자모 후보
- *   - 슬롯 진행
- *   - 만들어진 단어와 지금까지 쌓인 말
- *
- * 디자인은 아직 확정 전이다. 지금은 무엇을 보여줄지만 정해둔 상태로 두고,
- * 레이아웃과 타이포는 나중에 손본다.
- */
 export default function WordDisplay({ recognitionState, serverOnline }: WordDisplayProps)
 {
-  const { current, slots, slotsNeeded, correction, words, correcting, note } = recognitionState;
+  const { current, slots, slotsNeeded, correction, words, correcting } = recognitionState;
   const latestWord = correction?.correctedWord ?? '';
-  const history = words.slice(0, -1).slice(-14);
+  const history = words.slice(0, -1).slice(-4);
 
   return (
-    <div className="word-screen">
-      <section className="word-screen__now">
-        <p className="word-screen__label">지금 이 손 모양은</p>
-        {current.status === 'rest' ? (
-          <p className="word-screen__rest">손을 모두 펴면 쉬는 상태다</p>
-        ) : (
-          <>
-            <div className="word-screen__candidates">
-              {current.jamoCandidates.map((jamo) => (
-                <span key={jamo} className="jamo-chip">{jamo}</span>
-              ))}
-            </div>
-            {current.jamoCandidates.length > 1 && (
-              <p className="word-screen__hint">이 중 무엇인지는 아직 정해지지 않았다</p>
-            )}
-          </>
-        )}
-      </section>
+    <main className={`word-screen ${correcting ? 'is-working' : ''}`}>
+      <header className="exhibition-masthead">
+        <span className="exhibition-mark">GeSTure<span className="exhibition-mark__dot">.</span></span>
+        <span className="exhibition-caption">낯선 공존</span>
+      </header>
 
-      <section className="slot-track">
-        {Array.from({ length: slotsNeeded }, (_, index) =>
-        {
-          const slot = slots[index];
-          return (
-            <div key={index} className={`slot ${slot ? 'is-filled' : ''}`}>
-              {slot?.candidates.map((jamo) => <span key={jamo}>{jamo}</span>)}
-            </div>
-          );
-        })}
-      </section>
-
-      <section className={`word-main ${correcting ? 'is-working' : ''}`}>
+      <section className="word-main" aria-live="polite" aria-atomic="true">
+        <p className="word-main__eyebrow">{latestWord ? '우리 사이에 놓인 말' : '아직 쓰이지 않은 말'}</p>
         {correcting ? (
-          <p className="word-main__working">모인 손 모양으로 단어를 찾는 중</p>
+          <div className="word-main__forming" aria-label="모인 움직임으로 단어를 만드는 중">
+            <span /><span /><span />
+          </div>
         ) : latestWord ? (
-          <>
-            <strong className="word-main__word">{latestWord}</strong>
-            {correction && (
-              <p className="word-main__meta">
-                {correction.chosenJamo.join('')}
-                {correction.source === 'vocabulary' && ' · 단어장'}
-              </p>
-            )}
-          </>
+          <h1 key={`${words.length}-${latestWord}`} className="word-main__word" data-length={latestWord.length}>{latestWord}</h1>
         ) : (
-          <p className="word-main__waiting">{note}</p>
+          <h1 className="word-main__invitation">함께 움직여<br />하나의 말이 됩니다.</h1>
         )}
+        <p className="word-main__subline">
+          {correcting ? '서로의 움직임이 만나는 동안' : latestWord ? '다섯 사람의 움직임, 하나의 언어' : '손가락을 움직이고 잠시 머물러 보세요.'}
+        </p>
       </section>
 
-      {history.length > 0 && (
-        <section className="word-trail">
-          <span className="word-trail__label">지금까지 만들어진 말</span>
-          <div className="word-trail__items">
-            {history.map((word, index) => (
-              <span key={`${word}-${index}`}>{word}</span>
-            ))}
-          </div>
-        </section>
-      )}
+      <section className="word-progress" aria-label={`손 모양 ${correcting ? slotsNeeded : slots.length}개 기록, 전체 ${slotsNeeded}개`}>
+        <div className="slot-track" aria-hidden="true">
+          {Array.from({ length: slotsNeeded }, (_, index) => (
+            <span key={index} className={`slot ${correcting || slots[index] ? 'is-filled' : ''}`} />
+          ))}
+        </div>
+        <div className="word-screen__candidates" aria-label="현재 자모 후보">
+          {current.status === 'rest' ? <span className="word-screen__rest">다음 움직임을 기다립니다</span> :
+            current.jamoCandidates.map((jamo) => <span key={jamo} className="jamo-glyph">{jamo}</span>)}
+        </div>
+      </section>
 
-      {!serverOnline && <div className="offline-banner">서버 연결이 끊겼다</div>}
-    </div>
+      <footer className="exhibition-footer">
+        <span className="exhibition-footer__label">함께 남긴 말</span>
+        <div className="word-trail" aria-label="이전에 만들어진 단어">
+          {history.length ? history.map((word, index) => <span key={`${word}-${index}`}>{word}</span>) : <span className="word-trail__empty">—</span>}
+        </div>
+        <span className="exhibition-footer__edition">GESTURE · JEJU</span>
+      </footer>
+
+      {!serverOnline && <div className="offline-banner" role="status">잠시 연결을 기다리고 있습니다</div>}
+    </main>
   );
 }

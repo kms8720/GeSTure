@@ -55,6 +55,8 @@ export type WordCorrection = {
   slots: JamoSlot[];
   slotSummary: string;
   chosenJamo: string[];
+  inputJamoCount: number;
+  supplementedJamoCount: number;
   composedText: string;
   correctedWord: string;
   candidates: string[];
@@ -77,6 +79,25 @@ export type RecognitionState = {
 };
 
 export type ControllerState = Record<FingerName, boolean>;
+
+export type WordCloudState = {
+  words: string[];
+  latestWord: string;
+  sentences: {
+    text: string;
+    words: string[];
+    parts: { text: string; source: string }[];
+    model: string;
+    elapsedMs: number;
+  }[];
+  generating: boolean;
+  error: string | null;
+  updatedAt: string;
+};
+
+export const INITIAL_WORD_CLOUD_STATE: WordCloudState = {
+  words: [], latestWord: '', sentences: [], generating: false, error: null, updatedAt: ''
+};
 
 export const INITIAL_HAND_STATE: HandState = {
   thumb: 100, index: 100, middle: 100, ring: 100, pinky: 100

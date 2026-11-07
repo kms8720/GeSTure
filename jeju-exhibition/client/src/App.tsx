@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Controller from './pages/Controller';
+import Exhibition from './pages/Exhibition';
 import HandDisplay from './pages/HandDisplay';
 import Monitor from './pages/Monitor';
 import WordDisplay from './pages/WordDisplay';
@@ -11,8 +12,10 @@ import {
   INITIAL_CONTROLLER_STATE,
   INITIAL_HAND_STATE,
   INITIAL_RECOGNITION_STATE,
+  INITIAL_WORD_CLOUD_STATE,
   PoseClass,
-  RecognitionState
+  RecognitionState,
+  WordCloudState
 } from './socket/types';
 
 export default function App()
@@ -20,6 +23,7 @@ export default function App()
   const [handState, setHandState] = useState<HandState>(INITIAL_HAND_STATE);
   const [controllerState, setControllerState] = useState<ControllerState>(INITIAL_CONTROLLER_STATE);
   const [recognitionState, setRecognitionState] = useState<RecognitionState>(INITIAL_RECOGNITION_STATE);
+  const [wordCloudState, setWordCloudState] = useState<WordCloudState>(INITIAL_WORD_CLOUD_STATE);
   const [poseClasses, setPoseClasses] = useState<PoseClass[]>([]);
   const [serverOnline, setServerOnline] = useState(socket.connected);
 
@@ -33,6 +37,7 @@ export default function App()
     socket.on('hand:state', setHandState);
     socket.on('controller:state', setControllerState);
     socket.on('recognition:state', setRecognitionState);
+    socket.on('word-cloud:state', setWordCloudState);
     socket.on('pose:classes', setPoseClasses);
     setServerOnline(socket.connected);
 
@@ -48,6 +53,7 @@ export default function App()
       socket.off('hand:state', setHandState);
       socket.off('controller:state', setControllerState);
       socket.off('recognition:state', setRecognitionState);
+      socket.off('word-cloud:state', setWordCloudState);
       socket.off('pose:classes', setPoseClasses);
     };
   }, []);
@@ -55,6 +61,8 @@ export default function App()
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<Navigate to="/exhibition" replace />} />
+        <Route path="/exhibition" element={<Exhibition serverOnline={serverOnline} recognitionState={recognitionState} wordCloudState={wordCloudState} />} />
         {/* 손 화면과 단어 화면은 서로 다른 디스플레이에 띄운다 */}
         <Route
           path="/display/hand"

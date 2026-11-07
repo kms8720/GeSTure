@@ -9,6 +9,8 @@
     "dev:client": "vite --host 0.0.0.0",
     "build": "vite build",
     "start": "tsx server/index.ts",
+    "test:word-correction": "node --import tsx --test server/wordCorrection.test.ts",
+    "test:word-cloud": "node --import tsx --test server/sentenceGeneration.test.ts server/wordCloud.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit"
   },
   "dependencies": {

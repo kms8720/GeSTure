@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { CSSProperties, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { socket } from '../socket/socket';
 import {
@@ -61,12 +61,15 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
 
   return (
     <main className="controller-screen">
-      <div className="controller-station">{FINGER_STATION[finger]}</div>
+      <header className="exhibition-masthead">
+        <span className="exhibition-mark">GeSTure<span className="exhibition-mark__dot">.</span></span>
+        <span className="controller-station">0{FINGER_STATION[finger]} <span>/ 05</span></span>
+      </header>
 
-      <h1 className="controller-name">{FINGER_LABELS[finger]}</h1>
-
-      <div className="controller-readout">
-        <span className="controller-readout__value">{value}</span>
+      <div className="controller-heading">
+        <p className="controller-kicker">다섯 움직임 중 하나</p>
+        <h1 className="controller-name">{FINGER_LABELS[finger]}</h1>
+        <p className="controller-instruction">천천히 움직이고, 잠시 머물러 보세요.</p>
       </div>
 
       <div className="controller-slider-wrap">
@@ -84,22 +87,25 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
             max={100}
             step={1}
             value={value}
+            style={{ '--finger-progress': `${value}%` } as CSSProperties}
             onChange={(event) => send(Number(event.target.value))}
             aria-label={`${FINGER_LABELS[finger]} 굽힘 정도`}
+            aria-valuetext={`${value}% 펴짐`}
           />
         </div>
         <span className="controller-edge">접힘</span>
       </div>
 
-      <div className="controller-quick">
-        <button type="button" onClick={() => send(0)}>완전히 접기</button>
-        <button type="button" onClick={() => send(50)}>반쯤</button>
-        <button type="button" onClick={() => send(100)}>완전히 펴기</button>
+      <div className="controller-bottom">
+        <div className="controller-quick">
+          <button type="button" onClick={() => send(0)}>완전히 접기</button>
+          <button type="button" onClick={() => send(50)}>반쯤</button>
+          <button type="button" onClick={() => send(100)}>완전히 펴기</button>
+        </div>
+        <p className={`controller-status ${serverOnline ? 'is-online' : 'is-offline'}`} role="status">
+          {serverOnline ? '당신의 움직임이 손에 닿고 있습니다' : '잠시 연결을 기다리고 있습니다'}
+        </p>
       </div>
-
-      <p className={`controller-status ${serverOnline ? 'is-online' : 'is-offline'}`}>
-        {serverOnline ? '손과 연결되어 있다' : '연결이 끊겼다'}
-      </p>
     </main>
   );
 }

@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GeSTure · 말의 궤도</title>
+  <style>
+:root{color-scheme:dark;--bg:#08141a;--panel:#102128;--line:rgba(199,226,218,.13);--muted:#829a9c;--cream:#f0eee2;--mint:#bde9d4;--coral:#eebf9f;font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif}*{box-sizing:border-box}html,body{margin:0;min-height:100%}button,input{font:inherit}button{cursor:pointer}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+/* Exhibition window */
+.display-page{overflow:hidden;background:var(--bg);color:var(--cream)}.display-stage{position:relative;height:100svh;min-height:500px;overflow:hidden;background:radial-gradient(ellipse 42% 38% at 50% 54%,rgba(41,91,83,.32),transparent 75%),radial-gradient(ellipse 60% 55% at 50% 70%,rgba(20,54,62,.55),transparent 86%),#07141a}.display-stage:before,.display-stage:after{content:"";position:absolute;pointer-events:none;z-index:0}.display-stage:before{width:55vw;height:55vw;border-radius:50%;top:9%;left:22%;background:#658f75;opacity:.04;filter:blur(90px)}.display-stage:after{inset:0;background:linear-gradient(90deg,rgba(4,13,17,.38),transparent 25%,transparent 75%,rgba(4,13,17,.38))}.grain{position:absolute;inset:0;z-index:6;pointer-events:none;opacity:.085;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}.orbit{position:absolute;left:50%;top:55%;border:1px solid rgba(174,223,205,.11);border-radius:50%;transform:translate(-50%,-50%) rotate(-12deg);pointer-events:none}.orbit-one{width:min(88vw,1300px);height:47vh}.orbit-two{width:min(69vw,1020px);height:67vh;border-style:dashed;opacity:.7}.orbit-three{width:min(44vw,670px);height:36vh;opacity:.55}.crosshair{position:absolute;color:#8eb7a9;opacity:.35;font-size:18px}.crosshair-one{top:19%;left:17%}.crosshair-two{right:13%;bottom:20%}.stage-top,.stage-bottom{position:absolute;z-index:8;left:clamp(28px,4.4vw,82px);right:clamp(28px,4.4vw,82px);display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.16em;font-weight:700;color:#9bb6ac}.stage-top{top:38px}.stage-bottom{bottom:36px}.live-indicator{display:flex;align-items:center;gap:9px}.live-indicator i{width:6px;height:6px;border-radius:50%;background:#bde9d4;box-shadow:0 0 12px #bde9d4}.stage-caption{letter-spacing:.03em;font-weight:400;color:#93a9a5}.cycle-mark{display:flex;gap:5px}.cycle-mark i{width:17px;height:3px;background:#477069;border-radius:6px}.cycle-mark i:first-child{background:var(--mint)}.title-core{position:absolute;z-index:2;left:50%;top:54%;width:max-content;max-width:88vw;text-align:center;transform:translate(-50%,-50%);transition:opacity .7s,filter .7s}.title-core>div{font-family:Georgia,"Times New Roman",serif;font-size:clamp(64px,8.2vw,164px);font-weight:500;letter-spacing:-.075em;line-height:1;white-space:nowrap;text-shadow:0 0 42px rgba(184,232,203,.08)}.title-core b{font-weight:500;color:var(--mint)}.title-eyebrow{display:block;margin-bottom:26px;font-size:11px;letter-spacing:.42em;color:#9bbfb2;font-weight:700}.title-line{display:block;width:75px;height:1px;background:var(--mint);margin:30px auto 0;opacity:.75;transition:width .6s}.title-core.is-speaking{opacity:.63;filter:blur(.2px)}.title-core.is-speaking .title-line{width:170px}.floating-words{position:absolute;inset:0;z-index:5;pointer-events:none}.floating-word{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);white-space:nowrap;color:#d1d9cb;font-weight:500;letter-spacing:-.045em;will-change:left,top,opacity,transform;user-select:none;text-shadow:0 0 18px rgba(217,246,223,.2)}.floating-word:nth-child(3n){color:#a7ceb9}.floating-word:nth-child(4n){color:#d4baa7}.floating-word.is-staging{transition:left .94s cubic-bezier(.18,.8,.22,1),top .94s cubic-bezier(.18,.8,.22,1),font-size .72s,opacity .58s,transform .72s}.floating-word.is-resting{opacity:.16!important;transform:translate(-50%,-50%) scale(.77)}.floating-word.is-featured{z-index:10;color:#f4f1e6!important;font-weight:700;letter-spacing:-.055em;text-shadow:0 0 34px rgba(226,246,220,.22)}.sentence{position:absolute;z-index:4;left:6%;width:88%;top:25%;min-height:100px;text-align:center;font-size:clamp(28px,3.6vw,69px);font-weight:700;line-height:1.5;letter-spacing:-.055em;word-break:keep-all;text-wrap:balance;color:#f4f1e6;opacity:0;filter:blur(9px);transform:translateY(13px);transition:opacity .55s,filter .55s,transform .55s;pointer-events:none}.sentence.is-visible{opacity:1;filter:blur(0);transform:translateY(0)}.sentence .slot{visibility:hidden;display:inline-block;white-space:nowrap}.sentence .filler{opacity:0;transition:opacity .38s ease .12s}.sentence.is-visible .filler{opacity:1}.sentence-empty{position:absolute;z-index:4;left:0;right:0;top:25%;text-align:center;color:#9fb5ac;font-size:20px;letter-spacing:.02em}
+@media(max-width:850px){.control-grid{grid-template-columns:1fr}.control-hero{padding:42px 0 36px}.panel{min-height:0}.stage-caption{display:none}.stage-top,.stage-bottom{font-size:9px}.title-core>div{font-size:10vw}.title-eyebrow{font-size:9px}.sentence{top:30%;font-size:5vw}.orbit-one{width:102vw}.orbit-two{width:83vw}}
+@media(prefers-reduced-motion:reduce){.floating-word.is-staging,.title-core,.sentence,.sentence .filler{transition-duration:.01ms!important}}
+.floating-word.is-featured{line-height:1.5}
+
+</style>
+  <link rel="stylesheet" href="./exhibition.css">
+</head>
+<body class="display-page" data-page="display">
+  <div class="display-stage" id="stage">
+    <div class="grain" aria-hidden="true"></div>
+    <div class="orbit orbit-one" aria-hidden="true"></div>
+    <div class="orbit orbit-two" aria-hidden="true"></div>
+    <div class="orbit orbit-three" aria-hidden="true"></div>
+    <div class="crosshair crosshair-one" aria-hidden="true">＋</div>
+    <div class="crosshair crosshair-two" aria-hidden="true">＋</div>
+    <div class="stage-top"><span class="stage-index">GeSTure<span>.</span></span><span class="live-indicator"><i></i> 함께 남긴 말</span></div>
+    <div id="sentence" class="sentence" aria-live="polite" aria-atomic="true"></div>
+    <div id="title" class="title-core"><span class="title-eyebrow">WORDS IN ORBIT</span><div>낯선 <b>공존</b></div><span class="title-line"></span></div>
+    <div id="floating-words" class="floating-words" aria-hidden="true"></div>
+    <div class="stage-bottom"><span id="display-word-count">0 WORDS IN MOTION</span><span id="cloud-status" class="stage-caption" role="status">잠시 연결을 기다리고 있습니다</span><span class="cycle-mark"><i></i><i></i><i></i><i></i><i></i></span></div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+(() => {
+  "use strict";
+
+  let state = { words: [], latestWord: "", sentences: [], generating: false, error: null };
+  let connected = false;
+  let receivedState = false;
+  const stage = document.getElementById("stage");
+  const layer = document.getElementById("floating-words");
+  const sentenceBox = document.getElementById("sentence");
+  const title = document.getElementById("title");
+  const status = document.getElementById("cloud-status");
+  const nodes = new Map();
+  const selected = new Map();
+  let lastSentence = "";
+  let pendingSentence = "";
+  let cycleStart = performance.now();
+  let phase = "orbit";
+  let sequence = 0;
+  let arrangeTimer;
+
+  const sentenceText = sentence => sentence.parts.map(piece => piece.text).join("");
+  const usedWords = sentence => sentence.parts.filter(piece => piece.source).map(piece => piece.source);
+  function availableSentences() {
+    const known = new Set(state.words);
+    return state.sentences.filter(sentence => {
+      const used = usedWords(sentence);
+      return used.length >= 2 && used.every(word => known.has(word));
+    });
+  }
+  function updateStatus() {
+    stage.classList.toggle("is-offline", !connected);
+    status.textContent = !connected ? "잠시 연결을 기다리고 있습니다"
+      : !receivedState ? "함께 남긴 말을 불러오고 있습니다"
+      : state.words.length === 0 ? "손을 움직여 첫 단어를 남겨보세요"
+      : state.words.length === 1 ? "한 단어가 더 모이면 문장으로 이어집니다"
+      : state.generating ? "모인 말들로 문장을 잇고 있습니다"
+      : state.error ? "문장을 잇지 못했습니다. 다음 말을 기다립니다"
+      : state.sentences.length === 0 ? "모인 말들로 문장을 기다립니다"
+      : "흩어진 말들이 잠시 하나의 문장이 됩니다";
+  }
+  function hash(word) { return [...word].reduce((number, char) => (number * 31 + char.codePointAt(0)) >>> 0, 7); }
+  function orbitPosition(word, time) {
+    const index = state.words.indexOf(word);
+    const seed = hash(word);
+    const angle = (index / Math.max(state.words.length, 1)) * Math.PI * 2 + (seed % 100) / 110 + time * (seed % 2 ? 0.000045 : -0.000038);
+    const ring = 0.72 + (seed % 31) / 100;
+    return {
+      x: stage.clientWidth * (.5 + Math.cos(angle) * .405 * ring),
+      y: stage.clientHeight * (.55 + Math.sin(angle) * .375 * ring),
+    };
+  }
+  function place(node, position) {
+    node.style.left = `${position.x}px`;
+    node.style.top = `${position.y}px`;
+  }
+  function restoreWord(node, word, now) {
+    node.textContent = word;
+    node.style.fontSize = `${20 + hash(word) % 15}px`;
+    node.style.opacity = `${.66 + (hash(word) % 24) / 100}`;
+    node.classList.remove("is-featured", "is-resting");
+    place(node, orbitPosition(word, now));
+  }
+  function resetCycle(now = performance.now()) {
+    clearTimeout(arrangeTimer);
+    sequence++;
+    cycleStart = now;
+    phase = "orbit";
+    selected.clear();
+    sentenceBox.replaceChildren();
+    sentenceBox.classList.remove("is-visible");
+    sentenceBox.removeAttribute("aria-label");
+    title.classList.remove("is-speaking");
+    nodes.forEach((node, word) => {
+      node.classList.remove("is-staging");
+      restoreWord(node, word, now);
+    });
+  }
+  function syncWords() {
+    const wanted = new Set(state.words);
+    for (const [word, node] of nodes) if (!wanted.has(word)) { node.remove(); nodes.delete(word); }
+    state.words.forEach(word => {
+      if (nodes.has(word)) return;
+      const node = document.createElement("span");
+      node.className = "floating-word";
+      node.dataset.word = word;
+      restoreWord(node, word, performance.now());
+      if (phase === "halt" || phase === "arrange" || phase === "sentence") node.classList.add("is-resting");
+      nodes.set(word, node);
+      layer.append(node);
+    });
+    document.getElementById("display-word-count").textContent = `${state.words.length} WORDS IN MOTION`;
+  }
+  function chooseSentence() {
+    const pool = availableSentences();
+    if (!pool.length) return null;
+    let chosen = pool.find(sentence => sentenceText(sentence) === pendingSentence);
+    pendingSentence = "";
+    if (!chosen) {
+      let preferred = pool.filter(sentence => usedWords(sentence).includes(state.latestWord) && sentenceText(sentence) !== lastSentence);
+      if (!preferred.length) preferred = pool.filter(sentence => sentenceText(sentence) !== lastSentence);
+      const choices = preferred.length ? preferred : pool;
+      chosen = choices[Math.floor(Math.random() * choices.length)];
+    }
+    lastSentence = sentenceText(chosen);
+    return chosen;
+  }
+  function buildSentence(sentence) {
+    sentenceBox.replaceChildren();
+    sentenceBox.setAttribute("aria-label", sentenceText(sentence));
+    selected.clear();
+    sentence.parts.forEach(piece => {
+      const span = document.createElement("span");
+      span.textContent = piece.text;
+      if (piece.source && nodes.has(piece.source) && !selected.has(piece.source)) {
+        span.className = "slot";
+        selected.set(piece.source, { node: nodes.get(piece.source), slot: span, surface: piece.text });
+      } else span.className = "filler";
+      sentenceBox.append(span);
+    });
+  }
+  function startAttention() {
+    const sentence = chooseSentence();
+    if (!sentence) return;
+    phase = "halt";
+    sequence++;
+    const thisSequence = sequence;
+    buildSentence(sentence);
+    nodes.forEach(node => node.classList.add("is-staging"));
+    title.classList.add("is-speaking");
+    arrangeTimer = window.setTimeout(() => {
+      if (thisSequence !== sequence || phase !== "halt") return;
+      phase = "arrange";
+      const stageRect = stage.getBoundingClientRect();
+      const fontSize = parseFloat(getComputedStyle(sentenceBox).fontSize);
+      nodes.forEach((node, word) => {
+        const entry = selected.get(word);
+        if (!entry) { node.classList.add("is-resting"); return; }
+        const rect = entry.slot.getBoundingClientRect();
+        node.textContent = entry.surface;
+        node.style.fontSize = `${fontSize}px`;
+        node.style.opacity = "1";
+        node.classList.add("is-featured");
+        place(node, { x: rect.left - stageRect.left + rect.width / 2, y: rect.top - stageRect.top + rect.height / 2 });
+      });
+    }, 190);
+  }
+  function releaseSentence(now) {
+    phase = "release";
+    sentenceBox.classList.remove("is-visible");
+    title.classList.remove("is-speaking");
+    nodes.forEach((node, word) => restoreWord(node, word, now));
+  }
+  function tick(now) {
+    const elapsed = now - cycleStart;
+    if (elapsed >= 10000) resetCycle(now - elapsed % 10000);
+    const t = now - cycleStart;
+    if (phase === "orbit") {
+      nodes.forEach((node, word) => place(node, orbitPosition(word, now)));
+      // Late arrivals wait for the next cycle so a sentence gets its full reading time.
+      if (t >= 5200 && t < 5400 && state.sentences.length) startAttention();
+    } else if (phase === "arrange" && t >= 6600) {
+      phase = "sentence";
+      sentenceBox.classList.add("is-visible");
+    } else if (phase === "sentence" && t >= 9000) releaseSentence(now);
+    requestAnimationFrame(tick);
+  }
+  function receiveState(payload) {
+    if (!payload || !Array.isArray(payload.words) || !Array.isArray(payload.sentences)) return;
+    const previousSentence = state.sentences.length ? sentenceText(state.sentences[state.sentences.length - 1]) : "";
+    state = {
+      words: [...new Set(payload.words.filter(word => typeof word === "string" && word.length))],
+      latestWord: typeof payload.latestWord === "string" ? payload.latestWord : "",
+      sentences: payload.sentences.filter(sentence => sentence && Array.isArray(sentence.parts)
+        && sentence.parts.every(piece => piece && typeof piece.text === "string" && typeof piece.source === "string")),
+      generating: payload.generating === true,
+      error: payload.error,
+    };
+    receivedState = true;
+    const latestSentence = state.sentences.length ? sentenceText(state.sentences[state.sentences.length - 1]) : "";
+    const newSentence = latestSentence !== previousSentence;
+    if (newSentence) pendingSentence = latestSentence;
+    const removedSelection = [...selected.keys()].some(word => !state.words.includes(word));
+    syncWords();
+    if (state.words.length === 0 || removedSelection) resetCycle();
+    updateStatus();
+  }
+
+  if (typeof window.io === "function") {
+    const socket = window.io();
+    socket.on("connect", () => { connected = true; updateStatus(); });
+    socket.on("disconnect", () => { connected = false; updateStatus(); });
+    socket.on("connect_error", () => { connected = false; updateStatus(); });
+    socket.on("word-cloud:state", receiveState);
+  }
+  window.addEventListener("resize", () => resetCycle());
+  updateStatus();
+  requestAnimationFrame(tick);
+})();
+  </script>
+</body>
+</html>
