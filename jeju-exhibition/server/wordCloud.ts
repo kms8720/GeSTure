@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CloudSentence, EMPTY_WORD_CLOUD, WordCloudState, sentenceText, sentenceWords } from '../shared/wordCloud.js';
 import { isAllowedOutput } from './wordCorrection.js';
-import { createNeutralSentence, validateModelSentence } from './sentenceComposition.js';
+import { createFallbackSentence, validateModelSentence } from './sentenceComposition.js';
 import { EXHIBITION_THEME } from '../shared/exhibitionTheme.js';
 export { generateCloudSentence } from './sentenceComposition.js';
 
@@ -55,7 +55,7 @@ export class WordCloud
       const sentences: CloudSentence[] = [];
       if (saved.version === 1)
       {
-        this.ensureNeutralSentence();
+        this.ensureFallbackSentence();
         // 기존 고정 틀 문장은 따로 보존하고 전시 후보에서는 제외한다. 단어 기록은 이어 간다.
         const backup = `${options.file}.v1-backup`;
         if (!fs.existsSync(backup)) fs.copyFileSync(options.file, backup, fs.constants.COPYFILE_EXCL);
@@ -63,7 +63,7 @@ export class WordCloud
       else if (saved.sentenceTheme !== EXHIBITION_THEME.id)
       {
         // 주제 검토를 거치지 않은 이전 문장은 보관만 하고 새 전시에서는 재생하지 않는다.
-        this.ensureNeutralSentence();
+        this.ensureFallbackSentence();
         const backup = `${options.file}.before-${EXHIBITION_THEME.id}`;
         if (!fs.existsSync(backup)) fs.copyFileSync(options.file, backup, fs.constants.COPYFILE_EXCL);
       }
@@ -72,14 +72,18 @@ export class WordCloud
         for (const entry of saved.sentences)
         {
           if (!Array.isArray(entry?.parts) || !entry.parts.every((piece: unknown) => piece && typeof (piece as { text?: unknown }).text === 'string' && typeof (piece as { source?: unknown }).source === 'string')) continue;
-          const rebuilt = validateModelSentence({ text: sentenceText(entry), words: sentenceWords(entry) }, words);
-          if (!rebuilt) continue;
+          let rebuilt: CloudSentence | null;
           if (entry.origin === 'template')
           {
-            const neutral = createNeutralSentence(sentenceWords(rebuilt));
-            if (sentenceText(neutral) !== sentenceText(rebuilt)) continue;
-            rebuilt.origin = 'template';
+            const sources = sentenceWords(entry);
+            if (sources.length !== 2 || new Set(sources).size !== 2 || !sources.every((word) => words.includes(word))) continue;
+            rebuilt = createFallbackSentence(sources);
+            // 기본 문장은 명시적인 단어 위치로 복원한다. '장면'처럼 본문에도 있는 입력을 중복 노드로 읽지 않는다.
+            if (sentenceText(rebuilt) !== sentenceText(entry)) continue;
           }
+          else if (entry.origin === 'model') rebuilt = validateModelSentence({ text: sentenceText(entry), words: sentenceWords(entry) }, words);
+          else continue;
+          if (!rebuilt) continue;
           if (!sentences.some((sentence) => sentence.id === rebuilt.id)) sentences.push(rebuilt);
         }
       }
@@ -146,7 +150,7 @@ export class WordCloud
     this.state.words = this.state.words.slice(-MAX_WORDS);
     this.state.sentences = this.state.sentences.filter((sentence) => sentenceWords(sentence).every((source) => this.state.words.includes(source)));
     const words = chooseSentenceWords(this.state.words, word, this.options.random);
-    this.ensureNeutralSentence(words);
+    this.ensureFallbackSentence(words);
     this.publish(true);
     if (this.state.words.length >= 2 && this.options.generate)
     {
@@ -160,7 +164,7 @@ export class WordCloud
     this.cancelGeneration();
     if (this.state.words.length < 2 || !this.options.generate) return;
     const words = automatic ? this.nextAutomaticPair() : chooseSentenceWords(this.state.words, undefined, this.options.random);
-    this.ensureNeutralSentence(words);
+    this.ensureFallbackSentence(words);
     this.publish(true);
     await this.enrich(words, automatic);
   }
@@ -194,10 +198,10 @@ export class WordCloud
     if (this.state.generating) { this.state.generating = false; this.publish(false); }
   }
 
-  private ensureNeutralSentence(words = chooseSentenceWords(this.state.words, this.state.latestWord, this.options.random)): void
+  private ensureFallbackSentence(words = chooseSentenceWords(this.state.words, this.state.latestWord, this.options.random)): void
   {
     if (this.state.sentences.some((sentence) => sentence.origin === 'model')) return;
-    this.state.sentences = words.length === 2 ? [createNeutralSentence(words)] : [];
+    this.state.sentences = words.length === 2 ? [createFallbackSentence(words)] : [];
   }
 
   private appendSentence(sentence: CloudSentence): void
@@ -227,13 +231,13 @@ export class WordCloud
       result = generated && validateModelSentence({ text: sentenceText(generated), words: sentenceWords(generated) }, words);
       if (result && avoidSentences.includes(sentenceText(result))) result = null;
     }
-    catch { /* 실패해도 선택한 두 단어는 바꾸지 않고 중립적인 연결 문장을 쓴다. */ }
+    catch { /* 실패해도 선택한 두 단어는 바꾸지 않고 함께 표현하는 기본 문장을 쓴다. */ }
     finally
     {
       if (revision === this.revision)
       {
         if (result) this.appendSentence(result);
-        else if (!automatic || !this.state.sentences.length) this.appendSentence(createNeutralSentence(words));
+        else if (!automatic || !this.state.sentences.length) this.appendSentence(createFallbackSentence(words));
         this.controller = undefined;
         this.state.generating = false;
         this.lastFinishedAt = Date.now();
