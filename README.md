@@ -8,7 +8,7 @@
 
 실행·모델·실기 테스트는 Mac mini에서 진행한다. 기존 개발 Mac에서는 전시 서버를 켜지 않는다. 새 설치와 이어받기는 다음 문서를 확인한다.
 
-- [작업 규칙](AGENTS.md): 변경 사항을 GitHub `main`까지 반영
+- [작업 규칙](AGENTS.md): 방향 확인 → 구현·브리핑 → 2차 승인 후 GitHub `main` 반영
 - [최신 인수인계](HANDOFF.md): 변경 내용과 검증 기록
 - [Mac mini 준비 절차](jeju-exhibition/docs/mac-mini-handoff.md): 설치·실행·현장 점검
 - [제주 앱 안내](jeju-exhibition/README.md): 화면과 기능

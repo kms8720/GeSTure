@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { WordCloud, chooseSentenceWords } from './wordCloud.js';
-import { createNeutralSentence, validateModelSentence } from './sentenceComposition.js';
+import { createFallbackSentence, validateModelSentence } from './sentenceComposition.js';
 import { sentenceText, sentenceWords } from '../shared/wordCloud.js';
 import { VOCABULARY } from './vocabulary.js';
 import { EXHIBITION_THEME } from '../shared/exhibitionTheme.js';
@@ -37,7 +37,7 @@ test('real words accumulate without demo seeds, deduplicate and survive restart 
 
 test('free sentences link exact collected words and reject invalid or repeated anchors', () =>
 {
-  assert.equal(sentenceText(createNeutralSentence(['달', '바다'])), '‘달’과 ‘바다’가 나란히 놓였다.');
+  assert.equal(sentenceText(createFallbackSentence(['달', '바다'])), '우리는 ‘달’과 ‘바다’를 저마다의 방식으로 표현하며 한 장면을 함께 채웠다.');
   const known = ['새벽', '보람', '평화', '대답'];
   const sentence = validateModelSentence({ text: '새벽부터 준비한 일을 마치고 나니 보람이 느껴졌다.', words: ['새벽', '보람'] }, known);
   assert.ok(sentence);
@@ -90,7 +90,7 @@ test('removing a word removes dependent sentences in persisted state and caps a 
 
 test('deleted words cannot return through a late model response', async () =>
 {
-  let resolve!: (sentence: ReturnType<typeof createNeutralSentence>) => void;
+  let resolve!: (sentence: ReturnType<typeof createFallbackSentence>) => void;
   let started!: () => void;
   const ready = new Promise<void>((done) => { started = done; });
   const { cloud, cleanup } = fixture({ debounceMs: 0, generate: async () =>
@@ -103,7 +103,7 @@ test('deleted words cannot return through a late model response', async () =>
     // Keep the test alive while the production debounce timer is intentionally unref'd.
     await Promise.race([ready, new Promise((_, reject) => setTimeout(() => reject(new Error('모델 시작 시간 초과')), 1000))]);
     assert.equal(cloud.snapshot().generating, true);
-    cloud.removeWord('달'); resolve(createNeutralSentence(['달', '바다']));
+    cloud.removeWord('달'); resolve(createFallbackSentence(['달', '바다']));
     await new Promise((done) => setImmediate(done));
     assert.equal(cloud.snapshot().generating, false);
     assert.equal(cloud.snapshot().sentences.length, 0);
@@ -142,7 +142,7 @@ test('migration preserves old words and backs up fixed templates before replacin
     writeFileSync(file, JSON.stringify(legacy));
     const upgraded = new WordCloud({ file });
     assert.deepEqual(upgraded.snapshot().words, ['새벽', '보람']);
-    assert.equal(sentenceText(upgraded.snapshot().sentences[0]), '‘보람’과 ‘새벽’이 나란히 놓였다.');
+    assert.equal(sentenceText(upgraded.snapshot().sentences[0]), '우리는 ‘보람’과 ‘새벽’을 저마다의 방식으로 표현하며 한 장면을 함께 채웠다.');
     assert.deepEqual(JSON.parse(readFileSync(`${file}.v1-backup`, 'utf8')), legacy);
     upgraded.addWord('평화');
     assert.equal(JSON.parse(readFileSync(file, 'utf8')).version, 2);
@@ -227,7 +227,7 @@ test('rejected or failed generation keeps the selected pair in its fallback even
   {
     calls++;
     if (calls === 1) return modelSentence(words);
-    if (calls === 2) return createNeutralSentence(['보람', '평화']);
+    if (calls === 2) return createFallbackSentence(['보람', '평화']);
     throw new Error('offline');
   } });
   try
@@ -240,6 +240,7 @@ test('rejected or failed generation keeps the selected pair in its fallback even
     assert.equal(cloud.snapshot().sentences[0].id, previous.id);
     assert.equal(cloud.snapshot().sentences.slice(-1)[0].origin, 'template');
     assert.deepEqual(sentenceWords(cloud.snapshot().sentences.slice(-1)[0]), ['평화', '새벽']);
+    assert.ok(sentenceText(cloud.snapshot().sentences.slice(-1)[0]).includes('저마다의 방식으로 표현하며'));
     cloud.addWord('대답');
     await waitUntil(() => calls === 3 && !cloud.snapshot().generating);
     assert.deepEqual(sentenceWords(cloud.snapshot().sentences.slice(-1)[0]), ['대답', '새벽']);
@@ -249,7 +250,7 @@ test('rejected or failed generation keeps the selected pair in its fallback even
 
 test('a newer input cancels the old pair and ignores its late response', async () =>
 {
-  const pending: { words: string[]; signal: AbortSignal; resolve: (sentence: ReturnType<typeof createNeutralSentence>) => void }[] = [];
+  const pending: { words: string[]; signal: AbortSignal; resolve: (sentence: ReturnType<typeof createFallbackSentence>) => void }[] = [];
   const { cloud, cleanup } = fixture({ debounceMs: 0, random: () => 0, generate: (words, signal) => new Promise((resolve) => pending.push({ words, signal, resolve })) });
   try
   {
@@ -258,9 +259,9 @@ test('a newer input cancels the old pair and ignores its late response', async (
     cloud.addWord('대답');
     await waitUntil(() => pending.length === 2);
     assert.equal(pending[0].signal.aborted, true);
-    pending[1].resolve(createNeutralSentence(pending[1].words));
+    pending[1].resolve(createFallbackSentence(pending[1].words));
     await waitUntil(() => !cloud.snapshot().generating);
-    pending[0].resolve(createNeutralSentence(pending[0].words));
+    pending[0].resolve(createFallbackSentence(pending[0].words));
     await new Promise((done) => setImmediate(done));
     assert.deepEqual(cloud.snapshot().sentences.map(sentenceWords), [['대답', '새벽']]);
   }
@@ -369,12 +370,14 @@ test('theme migration preserves words and backs up unreviewed sentences without 
   try
   {
     const words = ['새벽', '보람', '평화', '대답'];
-    const old = { version: 2, words, latestWord: '대답', sentences: [modelSentence(['새벽', '보람'])] };
+    const old = { version: 2, sentenceTheme: 'barrier-free-coexistence-v1', words, latestWord: '대답', sentences: [modelSentence(['새벽', '보람'])] };
     writeFileSync(file, JSON.stringify(old));
     migrated = new WordCloud({ file, random: () => 0, generate: async (pair) => modelSentence(pair) });
     assert.deepEqual(migrated.snapshot().words, words);
     assert.equal(migrated.snapshot().latestWord, '대답');
     assert.ok(migrated.snapshot().sentences.every((sentence) => sentence.origin === 'template'));
+    assert.deepEqual(sentenceWords(migrated.snapshot().sentences[0]), ['대답', '새벽']);
+    assert.ok(migrated.snapshot().sentences.every((sentence) => sentence.id !== old.sentences[0].id));
     const backup = `${file}.before-${EXHIBITION_THEME.id}`;
     assert.deepEqual(JSON.parse(readFileSync(backup, 'utf8')), old);
     await migrated.regenerate();
@@ -383,4 +386,23 @@ test('theme migration preserves words and backs up unreviewed sentences without 
     assert.deepEqual(JSON.parse(readFileSync(backup, 'utf8')), old);
   }
   finally { migrated?.cancelGeneration(); cleanup(); }
+});
+
+test('fallback animation slots survive restart even when an input also occurs in the connecting prose', () =>
+{
+  const { cloud, file, cleanup } = fixture();
+  try
+  {
+    cloud.addWord('우리'); cloud.addWord('함께');
+    const state = cloud.snapshot();
+    assert.deepEqual(sentenceWords(state.sentences[0]), ['함께', '우리']);
+    assert.equal(state.sentences[0].origin, 'template');
+    assert.deepEqual(new WordCloud({ file }).snapshot(), state);
+    // 손상된 기본 문장을 AI 검토 문장으로 받아들이거나 그대로 재생하지 않는다.
+    const saved = JSON.parse(readFileSync(file, 'utf8'));
+    saved.sentences[0].parts[0].text = '혼자 ';
+    writeFileSync(file, JSON.stringify(saved));
+    assert.deepEqual(new WordCloud({ file }).snapshot().sentences, []);
+  }
+  finally { cleanup(); }
 });
