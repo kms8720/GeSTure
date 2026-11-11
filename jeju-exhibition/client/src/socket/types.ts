@@ -93,6 +93,7 @@ export type ParticipationSummary = {
 };
 
 export type NetworkInfo = {
+  connectionMode?: 'lan' | 'internet';
   port: number;
   addresses: string[];
   publicOrigin: string | null;

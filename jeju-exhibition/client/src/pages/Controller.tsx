@@ -162,7 +162,7 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
         <div className="controller-loader" aria-hidden="true" />
         <h1>{serverOnline ? requestedFinger ? `${FINGER_LABELS[requestedFinger]}에 연결하고 있습니다` : '빈 손가락을 찾고 있습니다' : '작품에 다시 연결하고 있습니다'}</h1>
         <p aria-live="polite">이 화면을 열어 두면 자동으로 연결됩니다.</p>
-        <p>작품 Wi-Fi에 연결되어 있는지 확인해 주세요.</p>
+        <p>네트워크 연결을 확인해 주세요. 계속 연결되지 않으면 운영자에게 알려 주세요.</p>
         <a href="/check">연결 점검</a>
       </main>
     );

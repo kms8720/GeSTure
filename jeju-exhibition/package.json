@@ -15,9 +15,12 @@
     "test:word-cloud": "node --import tsx --test server/sentenceComposition.test.ts server/wordCloud.test.ts",
     "setup": "node scripts/setup-exhibition.mjs",
     "check:network": "tsx scripts/check-network.ts",
-    "demo:word": "tsx scripts/demo-word.ts"
+    "demo:word": "tsx scripts/demo-word.ts",
+    "test:launcher": "node --test scripts/exhibition/*.test.mjs"
   },
-  "engines": { "node": ">=22.18.0" },
+  "engines": {
+    "node": ">=22.18.0"
+  },
   "dependencies": {
     "@react-three/drei": "latest",
     "@react-three/fiber": "latest",

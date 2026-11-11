@@ -26,7 +26,7 @@ import {
 } from './participantSessions.js';
 import { JamoSlot, WordCorrection, correctWord, matchVocabulary, warmUpOllama } from './wordCorrection.js';
 import { operatorAuth } from './operatorAuth.js';
-import { getLanAddresses, networkInfo, validatePublicOrigin } from './network.js';
+import { getLanAddresses, networkInfo, validatePublicOrigin, validateConnectionMode, validateJoinEntryUrl } from './network.js';
 import { WordCloud, generateCloudSentence } from './wordCloud.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -37,6 +37,8 @@ const SLOTS_PER_WORD = Number(process.env.SLOTS_PER_WORD ?? 6);
 const POSE_HOLD_MS = Number(process.env.POSE_HOLD_MS ?? 400);
 const MAX_WORD_HISTORY = 24;
 const PUBLIC_ORIGIN = process.env.PUBLIC_ORIGIN ? validatePublicOrigin(process.env.PUBLIC_ORIGIN) : undefined;
+validateConnectionMode(process.env.CONNECTION_MODE ?? 'lan', PUBLIC_ORIGIN);
+if (process.env.JOIN_ENTRY_URL) validateJoinEntryUrl(process.env.JOIN_ENTRY_URL);
 if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535 ||
     !Number.isInteger(SLOTS_PER_WORD) || SLOTS_PER_WORD < 1 || SLOTS_PER_WORD > POSE_CLASSES.length ||
     !Number.isFinite(POSE_HOLD_MS) || POSE_HOLD_MS < 0)
