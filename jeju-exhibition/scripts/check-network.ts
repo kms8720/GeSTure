@@ -3,8 +3,15 @@ import { io } from 'socket.io-client';
 
 const origin = new URL(process.argv[2] ?? process.env.PUBLIC_ORIGIN ?? `http://127.0.0.1:${process.env.PORT ?? 3002}`).origin;
 const checks: { name: string; ok: boolean; detail?: string }[] = [];
+let internet = false;
+try {
+  const response = await fetch(origin + '/network-info', { signal: AbortSignal.timeout(5000) });
+  internet = response.ok && (await response.json() as { connectionMode?: string }).connectionMode === 'internet';
+} catch { /* Individual checks below report the unavailable server. */ }
 const fingerRoutes = ['thumb', 'index', 'middle', 'ring', 'pinky'].map((finger) => `/join?finger=${finger}`);
-for (const route of ['/health', '/network-info', '/word-cloud', '/join', ...fingerRoutes, '/join/qr', '/check', '/display/hand', '/display/word'])
+const routes = ['/health', '/network-info', '/join', ...fingerRoutes, '/check'];
+if (!internet) routes.push('/word-cloud', '/join/qr', '/display/hand', '/display/word');
+for (const route of routes)
 {
   try
   {
@@ -14,7 +21,7 @@ for (const route of ['/health', '/network-info', '/word-cloud', '/join', ...fing
     if (route === '/network-info')
     {
       const info = await response.json() as { publicOrigin?: string; configured?: boolean; wifiSsid?: string };
-      checks.push({ name: '참여 주소·Wi-Fi 안내 설정', ok: Boolean(info.configured && info.wifiSsid && info.publicOrigin === origin) });
+      checks.push({ name: '참여 주소·연결 안내 설정', ok: Boolean(info.configured && (internet || info.wifiSsid) && info.publicOrigin === origin) });
     }
     checks.push({ name: route, ok });
     await response.body?.cancel().catch(() => undefined);
@@ -36,6 +43,6 @@ await new Promise<void>((resolve) =>
   socket.once('connect_error', () => finish(false));
 });
 const localOnly = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(origin).hostname);
-checks.push({ name: '관객용 LAN 주소로 검사', ok: !localOnly });
+checks.push({ name: '관객용 접속 주소로 검사', ok: !localOnly });
 console.log(JSON.stringify({ origin, checks, note: '이 검사는 실행한 컴퓨터에서의 접속만 확인합니다. iPhone·Android 실기와 인터넷 차단 검증은 별도로 필요합니다.' }, null, 2));
 if (checks.some((check) => !check.ok)) process.exitCode = 1;

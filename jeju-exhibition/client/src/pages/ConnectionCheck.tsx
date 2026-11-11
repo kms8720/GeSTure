@@ -31,8 +31,10 @@ export default function ConnectionCheck({ serverOnline }: { serverOnline: boolea
         <li>실시간 조종 연결: {serverOnline ? '연결됨' : '연결되지 않음'}</li>
         {latency !== null && <li>응답 시간: {latency}ms</li>}
       </ul>
-      <p>Wi-Fi: {network?.wifiSsid || '운영자에게 문의해 주세요'}</p>
-      <p>휴대폰의 Wi-Fi를 작품 네트워크로 연결해 주세요. 인터넷이 없다는 안내가 나와도 Wi-Fi 연결을 유지합니다.</p>
+      {network?.connectionMode === 'internet' ? <p>데이터 또는 Wi-Fi의 인터넷 연결을 확인해 주세요.</p> : <>
+        <p>Wi-Fi: {network?.wifiSsid || '운영자에게 문의해 주세요'}</p>
+        <p>휴대폰의 Wi-Fi를 작품 네트워크로 연결해 주세요. 인터넷이 없다는 안내가 나와도 Wi-Fi 연결을 유지합니다.</p>
+      </>}
       <p>연결이 계속 끊기면 운영자에게 이 화면을 보여 주세요.</p>
       <a className="controller-primary" href="/join">참여하기</a>
       <button type="button" onClick={() => window.location.reload()}>다시 점검</button>

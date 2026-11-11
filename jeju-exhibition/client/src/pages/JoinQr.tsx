@@ -26,15 +26,17 @@ export default function JoinQr({ serverOnline, participationSummary, controllerS
     return () => { active = false; };
   }, [serverOnline]);
 
-  const readyToPrint = serverOnline && network?.configured && network.wifiSsid && network.joinUrl;
+  const internet = network?.connectionMode === 'internet';
+  const temporaryAddress = Boolean(network?.joinUrl && new URL(network.joinUrl).hostname.endsWith('.trycloudflare.com'));
+  const readyToPrint = serverOnline && network?.configured && (internet || network.wifiSsid) && network.joinUrl && !temporaryAddress;
 
   return (
     <main className="join-qr-screen">
       <header className="join-qr-header">
         <p className="join-qr-kicker">GESTURE · 낯선 공존</p>
         <h1>함께 움직이는 다섯 손가락</h1>
-        <p>Wi-Fi에 연결한 뒤, 움직이고 싶은 손가락의 QR을 스캔해 주세요.</p>
-        {network?.wifiSsid ? (
+        <p>{internet ? '움직이고 싶은 손가락의 QR을 스캔해 주세요. 데이터나 Wi-Fi로 참여할 수 있습니다.' : 'Wi-Fi에 연결한 뒤, 움직이고 싶은 손가락의 QR을 스캔해 주세요.'}</p>
+        {internet ? <p className="join-qr-network-note">별도의 앱 설치 없이 참여합니다.</p> : network?.wifiSsid ? (
           <div className="join-qr-wifi">
             <span>Wi-Fi · {network.wifiSsid}</span>
             {network.wifiPassword && <span>비밀번호 · {network.wifiPassword}</span>}
@@ -70,6 +72,7 @@ export default function JoinQr({ serverOnline, participationSummary, controllerS
         </p>
         <a className="join-qr-no-print" href="/check">휴대폰 연결 점검</a>
         <button className="join-qr-no-print" type="button" disabled={!readyToPrint} onClick={() => window.print()}>안내판 인쇄</button>
+        {temporaryAddress && <p className="join-qr-no-print">임시 테스트 주소입니다. 인쇄용 QR에는 고정 주소가 필요합니다.</p>}
         {!serverOnline && <p role="status">작품 연결을 확인하고 있습니다.</p>}
       </footer>
     </main>
