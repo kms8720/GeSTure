@@ -6,6 +6,8 @@
 
 **방향·승인:** 사용자가 GitHub Pages 고정 입구 → Cloudflare Quick Tunnel → Mac mini 구성을 선택하고, AI 없이 시작 파일 하나로 준비하도록 요청했다. 이번 작업은 별도 승인 없이 GitHub에 반영하라고 명시했다. 이 예외는 이번 작업에 적용하며 이후 작업의 기본 2차 승인 절차는 유지한다. 앱·모델·터널·실기 테스트는 Mac mini에서만 실행한다.
 
+**반영 기록:** 기준 main `37c4ea1`, 구현·정적 확인 커밋 `9e18fae`, 작업 브랜치 `feat/public-tunnel-access`, [PR #28](https://github.com/kms8720/GeSTure/pull/28). 사용자가 main 병합을 승인했으며 실제 병합 상태는 PR에서 확인한다. Mac mini에서는 이후 변경까지 포함한 최신 main과 실제 검수 SHA를 기록한다.
+
 ### 구현한 동작
 
 - 저장소 루트의 `전시 시작.command`를 Finder에서 실행한다. 설치·인증·포트 확인 → 화면 빌드·Ollama 기동/예열 → 관객용 게이트웨이·임시 터널 → 앱 실행·외부 WebSocket 검사 → 고정 입구 갱신·배포 확인 → 손·단어·QR 화면 열기 순서다.
