@@ -20,7 +20,8 @@ export function createGateway({ port, sessionId, allowedOrigin }) {
     if (!['GET', 'HEAD'].includes(req.method) || !allowedPath(req.url)) { res.writeHead(404); res.end(); return; }
     const proxy = http.request({ host: '127.0.0.1', port, path: req.url, method: req.method,
       headers: { host: `127.0.0.1:${port}`, accept: req.headers.accept ?? '*/*' } }, upstream => {
-      res.writeHead(upstream.statusCode ?? 502, { ...upstream.headers, 'cache-control': 'no-store' }); upstream.pipe(res);
+      res.writeHead(upstream.statusCode ?? 502, { ...upstream.headers, 'cache-control': 'no-store' });
+      upstream.on('error', () => res.destroy()); upstream.pipe(res);
     });
     proxy.setTimeout(10000, () => proxy.destroy());
     proxy.on('error', () => { if (!res.headersSent) res.writeHead(502); res.end(); });
