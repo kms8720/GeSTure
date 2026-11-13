@@ -573,3 +573,24 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   .word-main__subline { margin-top: 2vh; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* Five independent participant frames on a shared iPad, using its LAN origin. */
+.tablet-controllers {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100dvh;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  gap: 12px;
+  background: #131716;
+  color: #f2f0e9;
+}
+.tablet-controllers__header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 24px; }
+.tablet-controllers__header h1 { margin: 0; font-size: 24px; }
+.tablet-controllers__header p { margin: 0; font-size: 14px; }
+.tablet-controllers__header span { margin-left: auto; font-size: 12px; }
+.tablet-controllers__grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); min-height: 0; gap: 8px; }
+.tablet-controllers__grid iframe { display: block; width: 100%; height: 100%; min-width: 0; border: 1px solid #3b403a; border-radius: 16px; }
+.controller-screen--panel { grid-template-rows: auto minmax(0, 1fr) auto; padding: 20px 12px 12px; gap: 8px; max-width: none; }
+.controller-screen--panel .controller-name { font-size: clamp(24px, 12vw, 40px); letter-spacing: 0; }
+.controller-screen--panel .controller-release { min-height: 44px; margin: 0; font-size: 12px; }

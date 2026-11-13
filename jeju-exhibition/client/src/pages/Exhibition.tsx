@@ -93,7 +93,7 @@ export default function Exhibition({ serverOnline, recognitionState, wordCloudSt
 
       <footer className="exhibition-overview__note">
         <span>아래 조종기는 빈 손가락에 참여합니다. 관객에게 자리를 넘기려면 ‘조종 자리 비우기’를 눌러주세요.</span>
-        <span><a href="/join/qr" target="_blank" rel="noopener noreferrer">관객 QR 안내판</a> · <a href="/display/word" target="_blank" rel="noopener noreferrer">문장 디스플레이</a></span>
+        <span><a href="/controllers" target="_blank" rel="noopener noreferrer">아이패드 조종기 5개</a> · <a href="/join/qr" target="_blank" rel="noopener noreferrer">관객 QR 안내판</a> · <a href="/display/word" target="_blank" rel="noopener noreferrer">문장 디스플레이</a></span>
       </footer>
     </main>
   );
