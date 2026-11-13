@@ -69,7 +69,7 @@ export default function App()
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/controllers" element={<TabletControllers serverOnline={serverOnline} />} />
+        <Route path="/controllers" element={<TabletControllers serverOnline={serverOnline} latestWord={wordCloud.latestWord} correcting={recognitionState.correcting} />} />
         <Route path="/" element={<Navigate to="/exhibition" replace />} />
         <Route path="/exhibition" element={<Exhibition serverOnline={serverOnline} recognitionState={recognitionState} wordCloudState={wordCloud} />} />
         <Route path="/display/latest-word" element={<WordDisplay recognitionState={recognitionState} serverOnline={serverOnline} />} />
