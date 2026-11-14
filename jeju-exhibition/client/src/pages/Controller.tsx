@@ -63,6 +63,7 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
   const requestedFinger = FINGER_ORDER.find((finger) => finger === rawFinger);
   const invalidFinger = rawFinger !== null && !requestedFinger;
   const preview = searchParams.get('preview') === '1' && !!requestedFinger;
+  const panel = preview && searchParams.get('panel') === '1';
   // The five overview frames need separate roles without replacing a phone's participant token.
   const previewKey = preview ? `${SESSION_KEY}-preview-${requestedFinger}` : undefined;
   const [token, setToken] = useState(() => loadToken(previewKey));
@@ -202,22 +203,22 @@ export default function Controller({ handState, serverOnline }: ControllerProps)
   };
 
   return (
-    <main className={`controller-screen controller-screen--control controller-screen--${finger}${preview ? ' controller-screen--preview' : ''}`}>
-      {preview && <header className="exhibition-masthead">
+    <main className={`controller-screen controller-screen--control controller-screen--${finger}${preview ? ' controller-screen--preview' : ''}${panel ? ' controller-screen--panel' : ''}`}>
+      {preview && !panel && <header className="exhibition-masthead">
         <span className="exhibition-mark">GeSTure<span className="exhibition-mark__dot">.</span></span>
         <span className="controller-station">0{FINGER_STATION[finger]} <span>/ 05</span></span>
       </header>}
       <div className="controller-heading">
         <h1 id="controller-finger-name" className="controller-name">{FINGER_LABELS[finger]}</h1>
-        {preview && <p className="controller-instruction">천천히 움직이고, 잠시 머물러 보세요.</p>}
+        {preview && !panel && <p className="controller-instruction">천천히 움직이고, 잠시 머물러 보세요.</p>}
       </div>
       <FingerSlider key={finger} value={value} onChange={send} />
       {preview && <div className="controller-bottom">
-        <div className="controller-quick">
+        {!panel && <div className="controller-quick">
           <button type="button" onClick={() => send(0)}>완전히 접기</button>
           <button type="button" onClick={() => send(50)}>반쯤</button>
           <button type="button" onClick={() => send(100)}>완전히 펴기</button>
-        </div>
+        </div>}
         <button className="controller-release" type="button" onClick={leave}>조종 자리 비우기</button>
       </div>}
     </main>

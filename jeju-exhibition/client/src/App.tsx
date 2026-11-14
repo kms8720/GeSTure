@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Controller from './pages/Controller';
+import TabletControllers from './pages/TabletControllers';
 import Exhibition from './pages/Exhibition';
 import ConnectionCheck from './pages/ConnectionCheck';
 import HandDisplay from './pages/HandDisplay';
@@ -68,6 +69,7 @@ export default function App()
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/controllers" element={<TabletControllers serverOnline={serverOnline} latestWord={wordCloud.latestWord} correcting={recognitionState.correcting} />} />
         <Route path="/" element={<Navigate to="/exhibition" replace />} />
         <Route path="/exhibition" element={<Exhibition serverOnline={serverOnline} recognitionState={recognitionState} wordCloudState={wordCloud} />} />
         <Route path="/display/latest-word" element={<WordDisplay recognitionState={recognitionState} serverOnline={serverOnline} />} />
