@@ -8,6 +8,7 @@ import { loadEnvFile } from 'node:process';
 import { io } from 'socket.io-client';
 import { createGateway } from './exhibition/gateway.mjs';
 import { ENTRY, checkAuth, checkPages, getEndpoint, publish } from './exhibition/pages.mjs';
+import { requestJson as json, sessionReady, waitFor as retryUntil } from './exhibition/readiness.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 process.chdir(root);
@@ -22,7 +23,11 @@ let locked = false, stopping = false, gateway, origin = '', published = false;
 let appChild, tunnelChild;
 const children = [];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-function step(message) { console.log(`\n${message}`); }
+function report(message) {
+  console.log(message);
+  fs.appendFileSync(path.join(data, 'launcher.log'), `${new Date().toISOString()} ${message}\n`, { mode: 0o600 });
+}
+function step(message) { report(`\n${message}`); }
 function launch(command, args, name, env = process.env, onData) {
   const log = fs.openSync(path.join(data, `${name}.log`), 'a', 0o600);
   const child = spawn(command, args, { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -34,26 +39,25 @@ function launch(command, args, name, env = process.env, onData) {
 }
 function alive(child) { return child && !child.failed && child.exitCode === null && child.signalCode === null; }
 async function waitFor(check, timeout, message) {
-  const end = Date.now() + timeout;
-  while (Date.now() < end) {
-    if (stopping) throw new Error('종료 중');
-    if (appChild && !alive(appChild)) throw new Error('앱이 종료됐습니다. data/exhibition-launcher/app.log를 확인하세요.');
-    if (tunnelChild && !alive(tunnelChild)) throw new Error('터널이 종료됐습니다. 터미널을 닫고 전시 시작을 다시 실행하세요.');
-    try { if (await check()) return; } catch (error) { if (error.fatal) throw error; }
-    await sleep(1500);
-  }
-  throw new Error(message);
+  return retryUntil(check, timeout, message, {
+    beforeCheck() {
+      if (stopping) throw new Error('종료 중');
+      if (appChild && !alive(appChild)) throw new Error('앱이 종료됐습니다. data/exhibition-launcher/app.log를 확인하세요.');
+      if (tunnelChild && !alive(tunnelChild)) throw new Error('터널이 종료됐습니다. 터미널을 닫고 전시 시작을 다시 실행하세요.');
+    },
+    onRetry: ({ elapsedMs, reason }) => report(`  연결 준비 대기 ${Math.round(elapsedMs / 1000)}초 / ${Math.round(timeout / 1000)}초 · ${reason}`),
+  });
 }
-async function json(url) { const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(7000) }); if (!response.ok) throw new Error(); return response.json(); }
 async function portFree(value) {
   await new Promise((resolve, reject) => { const s = net.createServer(); s.once('error', () => reject(new Error(`${value} 포트가 사용 중입니다. 이전 전시 프로그램을 정상 종료하세요.`))); s.listen(value, '127.0.0.1', () => s.close(resolve)); });
 }
 async function socketCheck() {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const socket = io(origin, { transports: ['websocket'], reconnection: false, timeout: 7000 });
-    const finish = ok => { clearTimeout(timer); socket.disconnect(); resolve(ok); };
-    const timer = setTimeout(() => finish(false), 8000);
-    socket.once('hand:state', () => finish(true)); socket.once('connect_error', () => finish(false));
+    const finish = error => { clearTimeout(timer); socket.disconnect(); error ? reject(error) : resolve(true); };
+    const timer = setTimeout(() => finish(new Error('실시간 손 상태 수신 시간 초과')), 8000);
+    socket.once('hand:state', () => finish());
+    socket.once('connect_error', error => finish(new Error(`실시간 연결 대기: ${error.message}`)));
   });
 }
 async function cleanup() {
@@ -118,12 +122,16 @@ try {
     origin ||= tunnelText.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/)?.[0] ?? '';
   });
   await waitFor(() => Boolean(origin), 60000, '터널 주소 발급 실패. 인터넷·방화벽을 확인하거나 사전 검증한 핫스팟으로 전환하세요.');
-  step('4/6 앱 실행·외부 실시간 연결 확인');
+  step('4/6 앱 실행·외부 실시간 연결 확인 (주소 반영 대기 최대 3분)');
+  report(`공개 주소: ${origin}`);
   appChild = launch(process.execPath, ['--import', 'tsx', 'server/index.ts'], 'app', { ...process.env,
     CONNECTION_MODE: 'internet', PUBLIC_ORIGIN: origin, JOIN_ENTRY_URL: ENTRY, PORT: String(port) });
   await waitFor(async () => (await json(`http://127.0.0.1:${port}/health`)).ok, 30000, '앱 시작 실패');
-  await waitFor(async () => (await json(`${origin}/entry-health`)).sessionId === sessionId, 60000, '외부 접속 실패. 터널·인터넷을 확인하세요.');
-  if (!await socketCheck()) throw new Error('외부 실시간 연결에 실패했습니다. 터널 연결과 app.log를 확인하세요.');
+  await waitFor(async () => sessionReady(await json(`http://127.0.0.1:${gatewayPort}/entry-health`), sessionId), 15000, '로컬 관객 게이트웨이 확인 실패');
+  await waitFor(async () => {
+    sessionReady(await json(`${origin}/entry-health?v=${Date.now()}`), sessionId);
+    return socketCheck();
+  }, 180000, '외부 접속 대기 시간이 지났습니다. 아래 원인과 launcher.log·tunnel.log를 확인하세요.');
   step('5/6 고정 QR 입구 갱신·배포 확인 (최대 10분)');
   const endpoint = { origin, sessionId, expiresAt: new Date(Date.now() + 12 * 3600000).toISOString() };
   await publish(endpoint, { expectedSessionId: previous?.sessionId ?? null }); published = true;
@@ -140,5 +148,5 @@ try {
     try { const h = await json(`${origin}/entry-health`); if (h.sessionId !== sessionId) throw new Error(); if (failures) console.log('외부 연결 복구됨'); failures = 0; }
     catch { failures++; if (failures === 2) console.error('외부 연결 끊김: 인터넷을 확인하세요. 기존 주소로 재연결을 기다립니다. 터널이 종료되면 시작 파일을 다시 실행하세요.'); }
   }
-} catch (error) { if (!stopping) { console.error(`\n준비 실패: ${error.message}\n자세한 로그: ${data}\n문제 해결 후 전시 시작 파일을 다시 실행하세요.`); process.exitCode = 1; } }
+} catch (error) { if (!stopping) { report(`\n준비 실패: ${error.message}\n자세한 로그: ${data}\n문제 해결 후 전시 시작 파일을 다시 실행하세요.`); process.exitCode = 1; } }
 finally { await cleanup(); }

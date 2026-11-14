@@ -293,6 +293,7 @@ async function requestOllama(prompt: string, deadline: number, signal?: AbortSig
       body: JSON.stringify({
         model: OLLAMA_MODEL,
         stream: false,
+        think: false,
         format: 'json',
         // 전시 중 모델이 언로드되어 다음 관객이 콜드 로드를 맞지 않게 한다
         keep_alive: process.env.OLLAMA_KEEP_ALIVE ?? '8h',
@@ -346,6 +347,7 @@ export async function warmUpOllama(): Promise<{ ok: boolean; elapsedMs: number; 
       body: JSON.stringify({
         model: OLLAMA_MODEL,
         stream: false,
+        think: false,
         format: 'json',
         keep_alive: process.env.OLLAMA_KEEP_ALIVE ?? '8h',
         options: { temperature: 0, num_predict: 8 },

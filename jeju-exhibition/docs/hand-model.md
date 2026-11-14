@@ -12,6 +12,8 @@
 
 `hand_exhibition.rig.json`에 다섯 손가락의 피벗 이름, 로컬 회전축, 최대 굽힘 각도가 들어 있다. 축은 GLB/Three.js 좌표이며, 앱은 원래 회전에 로컬 축 회전을 곱한다. 조종 값 100은 폄, 0은 설정된 최대 굽힘이다.
 
+화면에서는 `client/src/display/handGeometry.ts`가 소지의 분리된 스캔 조각 4개(242개 삼각형)를 제외한다. `pinky_intermediate`의 로컬 X가 0.1보다 큰 조각 3개(238개 삼각형), `pinky_proximal`의 로컬 Z가 -0.085보다 작은 조각 1개(4개 삼각형)다. 약지를 접었을 때 드러나 소지와 함께 움직이던 조각이다. 원본 GLB와 관절·외피·재질은 보존하고 복제한 표시용 인덱스만 변경한다. 모델을 교체할 때는 `node --import tsx --test scripts/hand-geometry.test.ts`로 이 위치 가정과 다른 부위 보존을 확인한다.
+
 ## 재생성
 
 프로젝트 루트에서 Blender 5.2를 사용한다. 첫 인수는 Meshy 원본, 두 번째는 출력 경로다. 검지는 `jeju-exhibition/model-sources/reference_hand.glb`에서 읽으며 두 입력 파일을 출력 경로로 지정할 수 없다.

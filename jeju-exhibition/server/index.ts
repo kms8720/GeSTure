@@ -105,8 +105,10 @@ function isParticipantToken(value: unknown): value is string
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: '*', methods: ['GET', 'POST'] } });
+const wordCloudFile = path.resolve(process.env.WORD_CLOUD_FILE || path.resolve(__dirname, '../data/word-cloud.json'));
+const generatedWordsFile = wordCloudFile.replace(/\.json$/i, '') + '-words.txt';
 const wordCloud = new WordCloud({
-  file: process.env.WORD_CLOUD_FILE || path.resolve(__dirname, '../data/word-cloud.json'),
+  file: wordCloudFile,
   generate: generateCloudSentence,
   onChange: (state) => io.emit('word-cloud:state', state)
 });
@@ -590,16 +592,27 @@ async function runCorrection(slots: JamoSlot[]): Promise<void>
       if (correction !== null)
       {
         recognitionState.correction = correction;
+        recognitionState.note = correction.note || '단어를 만들었다';
         if (correction.correctedWord)
         {
           recognitionState.words.push(correction.correctedWord);
           wordCloud.addWord(correction.correctedWord);
+          // 이 경로는 실제 조종 입력이 확정된 뒤에만 실행된다. 초기 단어와 취소된 요청은 기록하지 않는다.
+          try
+          {
+            fs.mkdirSync(path.dirname(generatedWordsFile), { recursive: true });
+            fs.appendFileSync(generatedWordsFile, correction.correctedWord + '\n', { encoding: 'utf8', mode: 0o600 });
+          }
+          catch (error)
+          {
+            recognitionState.note += ' · 생성 단어 TXT 저장 실패';
+            console.warn('생성 단어 TXT 저장 실패:', String(error));
+          }
           if (recognitionState.words.length > MAX_WORD_HISTORY)
           {
             recognitionState.words.shift();
           }
         }
-        recognitionState.note = correction.note || '단어를 만들었다';
       }
 
       suspendRecording();
@@ -640,6 +653,7 @@ httpServer.listen(PORT, '0.0.0.0', () =>
 {
   const addresses = getLanAddresses();
   console.log(`제주 전시 서버: http://0.0.0.0:${PORT}`);
+  console.log(`생성 단어 기록: ${generatedWordsFile}`);
   console.log(`포즈 클래스 ${POSE_CLASSES.length}개, 슬롯 ${SLOTS_PER_WORD}개마다 단어 생성`);
   if (!process.env.OPERATOR_TOKEN) console.warn('OPERATOR_TOKEN 미설정: 운영자 변경 기능은 잠겨 있습니다. npm run setup을 실행해 주세요.');
   addresses.forEach((address) =>

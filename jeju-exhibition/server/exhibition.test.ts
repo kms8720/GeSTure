@@ -4,7 +4,7 @@ import { spawn, ChildProcess } from 'node:child_process';
 import test, { before, after, beforeEach, afterEach } from 'node:test';
 import { io, Socket } from 'socket.io-client';
 import { FINGERS, POSE_CLASSES, type Finger } from './poseClasses.js';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { ParticipantState, ParticipationSummary } from './participantSessions.js';
@@ -154,6 +154,9 @@ test('one pose is recorded after holding without any subsequent input and is not
 test('three complete cycles do not carry an old pose or word into the next cycle', async () =>
 {
   const initialWords = (await state()).words.length;
+  const archive = path.join(cloudDirectory, 'cloud-words.txt');
+  const previous = existsSync(archive) ? readFileSync(archive, 'utf8') : '';
+  const generated: string[] = [];
   for (let cycle = 0; cycle < 3; cycle++)
   {
     for (let i = 0; i < 6; i++)
@@ -164,10 +167,15 @@ test('three complete cycles do not carry an old pose or word into the next cycle
       if (i === 0) assert.equal((await state()).correction, null);
     }
     const result = await state();
+    generated.push(result.correction.correctedWord);
     assert.equal(result.correction.slots.length, 6);
     assert.equal(result.slots.length, 0);
     await delay(650); assert.equal((await state()).slots.length, 0);
   }
+  assert.equal(readFileSync(archive, 'utf8'), previous + generated.join('\n') + '\n');
+  await stopApp();
+  await startApp();
+  assert.equal(readFileSync(archive, 'utf8'), previous + generated.join('\n') + '\n');
 });
 
 test('an explicit press of the current value resumes recording after reset or word completion', async () =>
