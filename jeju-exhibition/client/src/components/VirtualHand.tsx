@@ -4,6 +4,7 @@ import { Component, Suspense, useEffect, useMemo, type ReactNode } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { FingerName, HandState, Orientation } from '../socket/types';
+import { removePinkyScanFragments } from '../display/handGeometry';
 
 const MODEL_PATH = '/models/hand_exhibition.glb';
 const RIG_PATH = '/models/hand_exhibition.rig.json';
@@ -16,11 +17,12 @@ function Hand({ handState }: { handState: HandState })
   const gltf = useLoader(GLTFLoader, MODEL_PATH);
   const rigText = useLoader(THREE.FileLoader, RIG_PATH) as string;
   const invalidate = useThree((state) => state.invalidate);
-  const { model, scale, offset, pivots } = useMemo(() =>
+  const { model, scale, offset, pivots, cleanedGeometries } = useMemo(() =>
   {
     const rig = JSON.parse(rigText) as Rig;
     // Rigid, individually segmented meshes; the export does not contain a skin.
     const model = gltf.scene.clone(true);
+    const cleanedGeometries = removePinkyScanFragments(model);
     model.traverse((object) =>
     {
       if (object instanceof THREE.Mesh) { object.castShadow = true; object.receiveShadow = true; }
@@ -41,8 +43,9 @@ function Hand({ handState }: { handState: HandState })
           target: new THREE.Quaternion(), rotation: new THREE.Quaternion() };
       })
     );
-    return { model, scale, offset, pivots };
+    return { model, scale, offset, pivots, cleanedGeometries };
   }, [gltf.scene, rigText]);
+  useEffect(() => () => { for (const geometry of cleanedGeometries) geometry.dispose(); }, [cleanedGeometries]);
   useEffect(() => invalidate(), [handState, invalidate, model]);
   useFrame((_state, delta) =>
   {

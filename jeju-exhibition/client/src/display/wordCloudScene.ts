@@ -1,7 +1,10 @@
 import { CloudSentence, EMPTY_WORD_CLOUD, WordCloudState, sentenceText, sentenceWords } from '../../../shared/wordCloud';
 
 const hash = (word: string): number => [...word].reduce((number, char) => (number * 31 + char.codePointAt(0)!) >>> 0, 7);
-const CYCLE_MS = 10_000;
+const wordFontSize = (word: string): number => 30 + hash(word) % 19;
+const SENTENCE_START_MS = 6_600;
+const SENTENCE_END_MS = SENTENCE_START_MS + 7_000;
+const CYCLE_MS = SENTENCE_END_MS + 1_000;
 
 /** 첨부 WordCloud의 궤도 → 정렬 → 문장 → 해산 연출. React 갱신과 애니메이션 프레임을 분리한다. */
 export function createWordCloudScene(stage: HTMLElement, layer: HTMLElement, sentenceBox: HTMLElement, title: HTMLElement, announcer: HTMLElement)
@@ -27,7 +30,7 @@ export function createWordCloudScene(stage: HTMLElement, layer: HTMLElement, sen
     const angle = index / Math.max(state.words.length, 1) * Math.PI * 2 + seed % 100 / 110 + (reducedMotion.matches ? 0 : now * (seed % 2 ? 0.000045 : -0.000038));
     const ring = 0.72 + seed % 31 / 100;
     // 글자 너비를 고려해 세로 화면에서도 단어가 화면 밖으로 잘리지 않게 한다.
-    const half = Math.min(width * 0.4, word.length * (20 + seed % 15) * 0.5);
+    const half = Math.min(width * 0.4, word.length * wordFontSize(word) * 0.5);
     return {
       x: Math.max(half + 16, Math.min(width - half - 16, width * (0.5 + Math.cos(angle) * 0.405 * ring))),
       y: Math.max(100, Math.min(height - 95, height * (0.55 + Math.sin(angle) * 0.375 * ring)))
@@ -43,7 +46,7 @@ export function createWordCloudScene(stage: HTMLElement, layer: HTMLElement, sen
   function orbitStyle(node: HTMLSpanElement, word: string): void
   {
     node.textContent = word;
-    node.style.fontSize = `${20 + hash(word) % 15}px`;
+    node.style.fontSize = `${wordFontSize(word)}px`;
     node.style.opacity = `${0.66 + hash(word) % 24 / 100}`;
     node.className = `wc-floating-word${word === state.latestWord ? ' is-newest' : ''}`;
   }
@@ -131,13 +134,13 @@ export function createWordCloudScene(stage: HTMLElement, layer: HTMLElement, sen
       if (elapsed >= 5200) attention();
     }
     if (phase === 'halt' && elapsed >= 5390) arrange();
-    if (phase === 'arrange' && elapsed >= 6600)
+    if (phase === 'arrange' && elapsed >= SENTENCE_START_MS)
     {
       phase = 'sentence';
       sentenceBox.classList.add('is-visible');
       announcer.textContent = currentSentence ? sentenceText(currentSentence) : '';
     }
-    if (phase === 'sentence' && elapsed >= 9000) release(now);
+    if (phase === 'sentence' && elapsed >= SENTENCE_END_MS) release(now);
     stage.dataset.phase = phase;
   }
 

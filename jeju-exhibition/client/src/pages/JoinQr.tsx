@@ -1,14 +1,13 @@
 import { QRCodeSVG } from 'qrcode.react';
 import { useEffect, useState } from 'react';
-import { ControllerState, FINGER_LABELS, FINGER_ORDER, NetworkInfo, ParticipationSummary } from '../socket/types';
+import { ControllerState, FINGER_LABELS, FINGER_ORDER, NetworkInfo } from '../socket/types';
 
 type JoinQrProps = {
   serverOnline: boolean;
-  participationSummary: ParticipationSummary;
   controllerState: ControllerState;
 };
 
-export default function JoinQr({ serverOnline, participationSummary, controllerState }: JoinQrProps)
+export default function JoinQr({ serverOnline, controllerState }: JoinQrProps)
 {
   const [network, setNetwork] = useState<NetworkInfo | null>(null);
   const [failed, setFailed] = useState(false);
@@ -27,21 +26,19 @@ export default function JoinQr({ serverOnline, participationSummary, controllerS
   }, [serverOnline]);
 
   const internet = network?.connectionMode === 'internet';
-  const temporaryAddress = Boolean(network?.joinUrl && new URL(network.joinUrl).hostname.endsWith('.trycloudflare.com'));
-  const readyToPrint = serverOnline && network?.configured && (internet || network.wifiSsid) && network.joinUrl && !temporaryAddress;
 
   return (
     <main className="join-qr-screen">
       <header className="join-qr-header">
         <p className="join-qr-kicker">GESTURE · 낯선 공존</p>
         <h1>함께 움직이는 다섯 손가락</h1>
-        <p>{internet ? '움직이고 싶은 손가락의 QR을 스캔해 주세요. 데이터나 Wi-Fi로 참여할 수 있습니다.' : 'Wi-Fi에 연결한 뒤, 움직이고 싶은 손가락의 QR을 스캔해 주세요.'}</p>
-        {internet ? <p className="join-qr-network-note">별도의 앱 설치 없이 참여합니다.</p> : network?.wifiSsid ? (
+        <p>{internet ? '움직이고 싶은 손가락의 QR을 스캔해 주세요.' : 'Wi-Fi에 연결한 뒤, 움직이고 싶은 손가락의 QR을 스캔해 주세요.'}</p>
+        {!internet && (network?.wifiSsid ? (
           <div className="join-qr-wifi">
             <span>Wi-Fi · {network.wifiSsid}</span>
             {network.wifiPassword && <span>비밀번호 · {network.wifiPassword}</span>}
           </div>
-        ) : <p className="join-qr-network-note">노트북과 같은 Wi-Fi에서 참여합니다.</p>}
+        ) : <p className="join-qr-network-note">노트북과 같은 Wi-Fi에서 참여합니다.</p>)}
       </header>
       {network?.joinUrl ? (
         <section className="join-qr-grid" aria-label="손가락별 참여 QR">
@@ -66,13 +63,6 @@ export default function JoinQr({ serverOnline, participationSummary, controllerS
       ) : <p role="status">{failed ? '접속 안내를 불러오지 못했습니다.' : network ? '참여 주소를 준비 중입니다.' : '참여 주소를 확인하고 있습니다.'}</p>}
       <footer className="join-qr-footer">
         <p>사용 중인 손가락을 선택하면 그 손가락의 차례를 기다립니다.</p>
-        <p className="join-qr-count" aria-live="polite">
-          지금 {participationSummary.connectedCount}명 참여 중
-          {participationSummary.waitingCount > 0 && ` · ${participationSummary.waitingCount}명 대기 중`}
-        </p>
-        <a className="join-qr-no-print" href="/check">휴대폰 연결 점검</a>
-        <button className="join-qr-no-print" type="button" disabled={!readyToPrint} onClick={() => window.print()}>안내판 인쇄</button>
-        {temporaryAddress && <p className="join-qr-no-print">임시 테스트 주소입니다. 인쇄용 QR에는 고정 주소가 필요합니다.</p>}
         {!serverOnline && <p role="status">작품 연결을 확인하고 있습니다.</p>}
       </footer>
     </main>

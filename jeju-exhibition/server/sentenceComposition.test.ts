@@ -5,8 +5,8 @@ import { generateCloudSentence, parseSentenceCandidates, selectReviewedSentence 
 import { sentenceText, sentenceWords } from '../shared/wordCloud.js';
 
 const known = ['새벽', '보람'];
-const first = { text: '새벽을 각자의 몸짓으로 표현한 우리는 함께 장면을 완성하는 보람을 나누었다.', action: '각자의 몸짓으로 표현한', words: known };
-const second = { text: '우리는 서로 다른 손끝으로 새벽을 그리며 함께 채운 그림에 보람을 담았다.', action: '함께 채운 그림', words: known };
+const first = '새벽을 각자의 몸짓으로 표현한 우리는 함께 장면을 완성하는 보람을 나누었다.';
+const second = '우리는 서로 다른 손끝으로 새벽을 그리며 함께 채운 그림에 보람을 담았다.';
 const acceptedReview = {
   best: 1, natural: true, coherent: true, usesWords: true, themeAligned: true, respectful: true,
   themeEvidence: '서로 다른 손끝으로 새벽을 그리며 함께 채운 그림'
@@ -29,7 +29,7 @@ const mock = createServer((request, response) =>
     calls.push(JSON.parse(body));
     response.writeHead(200, { 'Content-Type': 'application/json' });
     if (stallBody || (stallReview && calls.length === 2)) { response.flushHeaders(); return; }
-    const content = calls.length === 1 ? { candidates: wrongPair ? [{ text: '서로의 대답을 듣고 나니 마음에 평화가 찾아왔다.', action: '서로의 대답을 듣고', words: ['대답', '평화'] }] : [first, second] } : { ...acceptedReview, best: rejectReview ? -1 : 1, coherent: !rejectReview, ...reviewOverrides };
+    const content = calls.length === 1 ? { candidates: wrongPair ? ['서로의 대답을 듣고 나니 마음에 평화가 찾아왔다.'] : [first, second] } : { ...acceptedReview, best: rejectReview ? -1 : 1, coherent: !rejectReview, ...reviewOverrides };
     const output = JSON.stringify({ message: { content: malformed ? '{invalid' : JSON.stringify(content) } });
     if (calls.length === 1 && firstDelay) setTimeout(() => response.end(output), firstDelay);
     else response.end(output);
@@ -48,19 +48,16 @@ after(async () =>
 test('the model writes sentences and an independent review selects the displayed candidate', async () =>
 {
   const result = await generateCloudSentence(known, new AbortController().signal);
-  assert.ok(result); assert.equal(sentenceText(result), second.text);
+  assert.ok(result); assert.equal(sentenceText(result), second);
   assert.deepEqual(sentenceWords(result), known);
   assert.equal(calls.length, 2);
-  const writer = calls[0] as { format: { type: string; properties: { candidates: { items: { required: string[] } } } }; messages: { content: string }[] };
+  const writer = calls[0] as { format: { type: string; properties: { candidates: { items: { type: string } } } }; messages: { content: string }[] };
   assert.equal(writer.format.type, 'object');
-  assert.deepEqual(writer.format.properties.candidates.items.required, ['words', 'action', 'text']);
+  assert.equal(writer.format.properties.candidates.items.type, 'string');
   assert.ok(writer.messages[0].content.includes(JSON.stringify(known)));
-  assert.ok(writer.messages[0].content.includes('빠짐없이 사용'));
   const reviewer = calls[1] as { messages: { content: string }[] };
-  assert.ok(reviewer.messages[0].content.includes('문장 편집자'));
-  assert.ok(writer.messages[0].content.includes('배리어프리'));
+  assert.ok(reviewer.messages[0].content.includes(JSON.stringify([first, second])));
   assert.ok(writer.messages[0].content.includes('장애예술페스타 열린 감각'));
-  assert.ok(writer.messages[0].content.includes('장면에 뿌리내린 절제된 비유는 허용'));
   assert.ok(reviewer.messages[0].content.includes('themeAligned'));
   assert.ok(reviewer.messages[0].content.includes('respectful'));
   assert.ok(reviewer.messages[0].content.includes('themeEvidence'));
@@ -70,8 +67,8 @@ test('a negative semantic review or missing review flags never publishes a candi
 {
   rejectReview = true;
   assert.equal(await generateCloudSentence(known, new AbortController().signal), null);
-  const candidates = parseSentenceCandidates({ candidates: [first, second, first] }, known);
-  assert.equal(candidates.length, 2);
+  const candidates = parseSentenceCandidates({ candidates: [first, first] }, known);
+  assert.equal(candidates.length, 1);
   for (const review of [null, { best: 0 }, { best: 0, natural: true, coherent: false, usesWords: true },
     { best: 99, natural: true, coherent: true, usesWords: true }]) assert.equal(selectReviewedSentence(review, candidates), null);
 });
@@ -113,19 +110,16 @@ test('the model cannot replace the randomly selected pair, omit an anchor or cho
   for (const words of [[], ['새벽'], ['새벽', '새벽'], ['새벽', '보람', '평화']])
     assert.equal(await generateCloudSentence(words, new AbortController().signal), null);
   assert.equal(calls.length, 1);
-  for (const candidate of [
-    { text: '새벽에 이웃의 일을 도와주고 집으로 돌아왔다.', words: known },
-    { text: '새벽에 이웃의 일을 도와주고 집으로 돌아왔다.', words: ['새벽'] }
-  ]) assert.deepEqual(parseSentenceCandidates({ candidates: [candidate] }, known), []);
+  assert.deepEqual(parseSentenceCandidates({ candidates: ['새벽에 이웃의 일을 도와주고 집으로 돌아왔다.'] }, known), []);
 });
 
 
 test('verbatim archived sentences are rejected before review and supplied as examples to avoid', async () =>
 {
-  assert.equal(await generateCloudSentence(known, new AbortController().signal, { avoidSentences: [first.text, second.text] }), null);
+  assert.equal(await generateCloudSentence(known, new AbortController().signal, { avoidSentences: [first, second] }), null);
   assert.equal(calls.length, 1);
   const writer = calls[0] as { messages: { content: string }[] };
-  assert.ok(writer.messages[0].content.includes(first.text));
+  assert.ok(writer.messages[0].content.includes(first));
   assert.ok(writer.messages[0].content.includes('반복 금지'));
 });
 
@@ -140,36 +134,48 @@ test('grammatical sentences without the exhibition theme never pass the review g
   assert.equal(selectReviewedSentence({ ...review, themeAligned: true }, candidates)?.id, candidates[1].id);
 });
 
-test('grounded poetic and inflected actions reach semantic review without a verb whitelist', () =>
+test('grounded poetic and inflected actions reach review using just the sentence text', () =>
 {
-  for (const [text, action, words] of [
-    ['새벽에 서로의 의견을 들어 함께 글을 완성하니 보람이 느껴졌다.', '서로의 의견을 들어', known],
-    ['새벽에 서로의 차례를 기다린 뒤 함께 글을 완성하니 보람이 느껴졌다.', '서로의 차례를 기다린', known],
-    ['서로 다른 손끝으로 함께 빚은 바다에 각자의 기억이 포개졌다.', '서로 다른 손끝으로 함께 빚은', ['바다', '기억']]
-  ] as [string, string, string[]][]) assert.equal(parseSentenceCandidates({ candidates: [{ text, action, words }] }, words).length, 1);
+  const text = '서로 다른 손끝으로 함께 빚은 바다에 각자의 기억이 포개졌다.';
+  const candidates = parseSentenceCandidates({ candidates: [text] }, ['바다', '기억']);
+  assert.deepEqual(candidates.map(sentenceText), [text]);
 });
 
-test('an action must be an exact excerpt and the selected pair cannot grow or change', () =>
+test('a duplicate ending or a missing or repeated word does not block a valid second candidate', () =>
 {
-  for (const candidate of [
-    { ...first, action: undefined },
-    { ...first, action: '공동 창작을 했다' },
-    { ...first, action: ' ' },
-    { ...first, words: ['새벽', '보람', '장면'] },
-    { ...first, words: ['새벽', '장면'] }
-  ]) assert.deepEqual(parseSentenceCandidates({ candidates: [candidate] }, known), []);
+  for (const invalid of [
+    null, { text: first }, first + ' 다.', first.replace('보람', '평화'), first.replace('보람', '보람과 보람')
+  ])
+  {
+    const candidates = parseSentenceCandidates({ candidates: [invalid, second] }, known);
+    assert.deepEqual(candidates.map(sentenceText), [second]);
+  }
+});
+
+test('a declarative ending without a final period can reach review', () =>
+{
+  const candidates = parseSentenceCandidates({ candidates: [second.slice(0, -1)] }, known);
+  assert.deepEqual(candidates.map(sentenceText), [second]);
 });
 
 test('theme evidence must come from the selected sentence and every semantic flag must be true', () =>
 {
   const candidates = parseSentenceCandidates({ candidates: [first, second] }, known);
-  for (const themeEvidence of [undefined, null, '', '함께', '모두가 동등하게 작품을 만들었다.', first.action])
+  for (const themeEvidence of [undefined, null, '', '함께', '모두가 동등하게 작품을 만들었다.', '각자의 몸짓으로 표현한'])
     assert.equal(selectReviewedSentence({ ...acceptedReview, themeEvidence }, candidates), null);
   for (const flag of ['natural', 'coherent', 'usesWords', 'themeAligned', 'respectful'])
     for (const value of [undefined, false, 'true'])
       assert.equal(selectReviewedSentence({ ...acceptedReview, [flag]: value }, candidates), null);
   for (const best of [-1, 99, '1', 0.5])
     assert.equal(selectReviewedSentence({ ...acceptedReview, best }, candidates), null);
+});
+
+test('an exact quote about an object acting alone is not evidence of shared expression', () =>
+{
+  const text = '대답한 새벽의 불꽃이 야경을 가득 채웠다.';
+  const candidates = parseSentenceCandidates({ candidates: [text] }, ['새벽', '대답']);
+  assert.equal(candidates.length, 1);
+  assert.equal(selectReviewedSentence({ ...acceptedReview, best: 0, themeEvidence: text }, candidates), null);
 });
 
 test('a fabricated theme explanation cannot publish a model sentence', async () =>
@@ -189,9 +195,9 @@ test('a negative respect judgment cannot publish a model sentence', async () =>
 test('the reviewer selects from the remaining candidates after repeated text is removed', async () =>
 {
   reviewOverrides = { best: 0 };
-  const result = await generateCloudSentence(known, new AbortController().signal, { avoidSentences: [first.text] });
+  const result = await generateCloudSentence(known, new AbortController().signal, { avoidSentences: [first] });
   assert.ok(result);
-  assert.equal(sentenceText(result), second.text);
+  assert.equal(sentenceText(result), second);
   const reviewer = calls[1] as { format: { properties: { best: { enum: number[] } } } };
   assert.deepEqual(reviewer.format.properties.best.enum, [-1, 0]);
 });
