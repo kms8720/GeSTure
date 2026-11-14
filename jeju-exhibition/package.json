@@ -16,7 +16,8 @@
     "setup": "node scripts/setup-exhibition.mjs",
     "check:network": "tsx scripts/check-network.ts",
     "demo:word": "tsx scripts/demo-word.ts",
-    "test:launcher": "node --test scripts/exhibition/*.test.mjs"
+    "test:launcher": "node --test scripts/exhibition/*.test.mjs",
+    "test:hand-model": "node --import tsx --test scripts/hand-geometry.test.ts"
   },
   "engines": {
     "node": ">=22.18.0"
